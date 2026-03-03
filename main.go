@@ -66,23 +66,41 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
-	if authUser != "" && authPass != "" {
-		r.Use(basicAuth(authUser, authPass))
-		log.Println("Basic Auth enabled")
-	} else {
-		log.Println("WARNING: Basic Auth disabled (AUTH_USERNAME/AUTH_PASSWORD not set)")
-	}
+	r.Use(middleware.Throttle(10)) // Limit to 10 concurrent requests.
+	r.Use(corsMiddleware)
 
-	// API routes.
-	r.Route("/api", func(r chi.Router) {
-		r.Post("/translate", h.handleTranslate)
-		r.Get("/history", h.handleHistory)
-		r.Get("/export/csv", h.handleExportCSV)
+	// Health check (unauthenticated, for Docker/load balancer probes).
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		if err := db.Ping(); err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("db: unhealthy"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
 	})
 
-	// Static files (frontend).
-	fileServer := http.FileServer(http.Dir("static"))
-	r.Handle("/*", fileServer)
+	// Authenticated routes.
+	r.Group(func(r chi.Router) {
+		if authUser != "" && authPass != "" {
+			r.Use(basicAuth(authUser, authPass))
+			log.Println("Basic Auth enabled")
+		} else {
+			log.Println("WARNING: Basic Auth disabled (AUTH_USERNAME/AUTH_PASSWORD not set)")
+		}
+
+		// API routes.
+		r.Route("/api", func(r chi.Router) {
+			r.Post("/translate", h.handleTranslate)
+			r.Get("/history", h.handleHistory)
+			r.Get("/export/csv", h.handleExportCSV)
+			r.Delete("/translations/{id}", h.handleDelete)
+		})
+
+		// Static files (frontend).
+		fileServer := http.FileServer(http.Dir("static"))
+		r.Handle("/*", fileServer)
+	})
 
 	// ── Server ───────────────────────────────────────────────────────
 	srv := &http.Server{
@@ -114,7 +132,6 @@ func main() {
 		log.Printf("Server forced to shutdown: %v", err)
 	}
 
-	db.Close()
 	log.Println("Server stopped gracefully")
 }
 
@@ -133,4 +150,20 @@ func basicAuth(username, password string) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// corsMiddleware adds CORS headers for cross-origin requests.
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

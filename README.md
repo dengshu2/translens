@@ -6,10 +6,13 @@
 
 - **中译英翻译** — 基于 Google Gemini API，翻译为地道、口语化的美式英文
 - **翻译历史** — 自动保存每条翻译记录，支持回顾与重新翻译
+- **搜索与分页** — 支持关键词搜索（中/英），分页加载历史记录
+- **删除记录** — 支持删除单条翻译记录
 - **CSV 导出** — 一键导出全部历史记录为 CSV 文件，兼容 Excel
 - **极简界面** — Notion 风格 UI，响应式设计，支持桌面端和移动端
 - **快捷操作** — `Ctrl + Enter` 快捷翻译，一键复制结果
 - **访问控制** — HTTP Basic Auth 保护，防止未授权访问
+- **健康检查** — `/health` 端点支持 Docker 容器健康检测
 
 ## 🏗️ 技术栈
 
@@ -116,10 +119,24 @@ curl -u user:pass -X POST http://localhost:8080/api/translate \
 
 ### `GET /api/history`
 
-获取全部翻译历史（按时间倒序）。
+获取翻译历史（支持分页和搜索）。
+
+| 参数 | 类型 | 默认值 | 说明 |
+|---|---|---|---|
+| `limit` | int | 20 | 每页条数（最大 100） |
+| `offset` | int | 0 | 偏移量 |
+| `q` | string | — | 搜索关键词（匹配中文或英文） |
 
 ```bash
-curl -u user:pass http://localhost:8080/api/history
+curl -u user:pass 'http://localhost:8080/api/history?limit=10&offset=0&q=hello'
+```
+
+### `DELETE /api/translations/{id}`
+
+删除指定 ID 的翻译记录。
+
+```bash
+curl -u user:pass -X DELETE http://localhost:8080/api/translations/1
 ```
 
 ### `GET /api/export/csv`
@@ -128,6 +145,14 @@ curl -u user:pass http://localhost:8080/api/history
 
 ```bash
 curl -u user:pass -O http://localhost:8080/api/export/csv
+```
+
+### `GET /health`
+
+健康检查端点（无需认证）。
+
+```bash
+curl http://localhost:8080/health
 ```
 
 ## 🐳 Docker 说明

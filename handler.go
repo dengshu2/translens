@@ -1,21 +1,30 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/go-chi/chi/v5"
 )
+
+// Translator abstracts the translation capability so it can be mocked in tests.
+type Translator interface {
+	Translate(ctx context.Context, chinese string) (string, error)
+}
 
 // handler holds shared dependencies for HTTP handlers.
 type handler struct {
 	db     *sql.DB
-	gemini *GeminiClient
+	gemini Translator
 }
 
 // respondJSON writes a JSON response with the given status code.
@@ -55,7 +64,7 @@ func (h *handler) handleTranslate(w http.ResponseWriter, r *http.Request) {
 	english, err := h.gemini.Translate(r.Context(), req.Chinese)
 	if err != nil {
 		log.Printf("Translation error: %v", err)
-		respondError(w, http.StatusInternalServerError, fmt.Sprintf("翻译失败：%v", err))
+		respondError(w, http.StatusInternalServerError, "翻译失败，请稍后重试")
 		return
 	}
 
@@ -70,9 +79,24 @@ func (h *handler) handleTranslate(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, t)
 }
 
-// handleHistory handles GET /api/history
+// handleHistory handles GET /api/history?limit=20&offset=0&q=search
 func (h *handler) handleHistory(w http.ResponseWriter, r *http.Request) {
-	translations, err := GetAllTranslations(h.db)
+	limit := 20
+	offset := 0
+	search := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 100 {
+			limit = n
+		}
+	}
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	translations, total, err := GetTranslations(h.db, limit, offset, search)
 	if err != nil {
 		log.Printf("Query error: %v", err)
 		respondError(w, http.StatusInternalServerError, "获取历史记录失败")
@@ -86,6 +110,8 @@ func (h *handler) handleHistory(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"translations": translations,
+		"total":        total,
+		"has_more":     offset+limit < total,
 	})
 }
 
@@ -121,4 +147,27 @@ func (h *handler) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 			t.CreatedAt.Format(time.RFC3339),
 		})
 	}
+}
+
+// handleDelete handles DELETE /api/translations/{id}
+func (h *handler) handleDelete(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		respondError(w, http.StatusBadRequest, "无效的 ID")
+		return
+	}
+
+	deleted, err := DeleteTranslation(h.db, id)
+	if err != nil {
+		log.Printf("Delete error: %v", err)
+		respondError(w, http.StatusInternalServerError, "删除失败")
+		return
+	}
+	if !deleted {
+		respondError(w, http.StatusNotFound, "记录不存在")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }

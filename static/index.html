@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,46 +8,48 @@
     <title>TransLens — 翻译学习</title>
     <style>
         /* ── Reset & Base ─────────────────────────────────── */
-        *, *::before, *::after {
+        *,
+        *::before,
+        *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
         :root {
-            --color-text:           #37352F;
+            --color-text: #37352F;
             --color-text-secondary: #787774;
-            --color-text-light:     #B4B4B0;
-            --color-bg:             #FFFFFF;
-            --color-bg-hover:       rgba(55, 53, 47, 0.08);
-            --color-bg-gray:        #F7F6F3;
-            --color-border:         #E3E2DE;
-            --color-blue:           #2EAADC;
-            --color-blue-hover:     #2496c4;
-            --color-blue-bg:        #D3E5EF;
-            --color-green:          #0F7B6C;
-            --color-green-bg:       #DBEDDB;
-            --color-red:            #E03E3E;
-            --color-red-bg:         #FBE4E4;
+            --color-text-light: #B4B4B0;
+            --color-bg: #FFFFFF;
+            --color-bg-hover: rgba(55, 53, 47, 0.08);
+            --color-bg-gray: #F7F6F3;
+            --color-border: #E3E2DE;
+            --color-blue: #2EAADC;
+            --color-blue-hover: #2496c4;
+            --color-blue-bg: #D3E5EF;
+            --color-green: #0F7B6C;
+            --color-green-bg: #DBEDDB;
+            --color-red: #E03E3E;
+            --color-red-bg: #FBE4E4;
 
             --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                           Helvetica, "Apple Color Emoji", Arial, sans-serif,
-                           "Segoe UI Emoji", "Segoe UI Symbol";
-            --font-size-xs:    12px;
-            --font-size-sm:    14px;
-            --font-size-base:  16px;
-            --font-size-lg:    20px;
-            --font-size-xl:    24px;
-            --line-height:     1.6;
+                Helvetica, "Apple Color Emoji", Arial, sans-serif,
+                "Segoe UI Emoji", "Segoe UI Symbol";
+            --font-size-xs: 12px;
+            --font-size-sm: 14px;
+            --font-size-base: 16px;
+            --font-size-lg: 20px;
+            --font-size-xl: 24px;
+            --line-height: 1.6;
 
-            --space-xs:  4px;
-            --space-sm:  8px;
-            --space-md:  16px;
-            --space-lg:  24px;
-            --space-xl:  48px;
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 48px;
 
-            --radius:      4px;
-            --transition:  0.2s ease;
+            --radius: 4px;
+            --transition: 0.2s ease;
         }
 
         body {
@@ -207,14 +210,16 @@
             display: inline-block;
             width: 14px;
             height: 14px;
-            border: 2px solid rgba(255,255,255,0.3);
+            border: 2px solid rgba(255, 255, 255, 0.3);
             border-top-color: #fff;
             border-radius: 50%;
             animation: spin 0.6s linear infinite;
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         /* ── Result Section ───────────────────────────────── */
@@ -405,7 +410,7 @@
             pointer-events: auto;
             animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
             margin-bottom: var(--space-sm);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
         }
 
         .toast.error {
@@ -417,18 +422,126 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         @keyframes toastIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to   { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         @keyframes toastOut {
-            from { opacity: 1; }
-            to   { opacity: 0; transform: translateY(-10px); }
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+
+        /* ── Load More ────────────────────────────────────── */
+        .load-more-wrapper {
+            display: flex;
+            justify-content: center;
+            padding: var(--space-lg) 0;
+        }
+
+        .btn-load-more {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 24px;
+            font-size: var(--font-size-sm);
+            font-family: var(--font-family);
+            color: var(--color-text-secondary);
+            background: transparent;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: background var(--transition), color var(--transition);
+        }
+
+        .btn-load-more:hover:not(:disabled) {
+            background: var(--color-bg-hover);
+            color: var(--color-text);
+        }
+
+        .btn-load-more:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .history-count {
+            font-size: var(--font-size-xs);
+            color: var(--color-text-light);
+            margin-left: var(--space-sm);
+        }
+
+        .history-search {
+            position: relative;
+            margin-bottom: var(--space-md);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 36px 8px 12px;
+            font-size: var(--font-size-sm);
+            font-family: var(--font-family);
+            color: var(--color-text);
+            background: var(--color-bg-gray);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            outline: none;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+
+        .search-input:focus {
+            border-color: var(--color-blue);
+            box-shadow: 0 0 0 2px rgba(46, 170, 220, 0.15);
+        }
+
+        .search-input::placeholder {
+            color: var(--color-text-light);
+        }
+
+        .search-clear {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: var(--color-text-light);
+            font-size: 14px;
+            border-radius: 50%;
+            transition: color var(--transition);
+        }
+
+        .search-clear:hover {
+            color: var(--color-text);
         }
 
         /* ── Responsive ───────────────────────────────────── */
@@ -455,6 +568,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="app">
         <!-- Header -->
@@ -471,13 +585,8 @@
         <!-- Input -->
         <section class="input-section">
             <div class="textarea-wrapper" id="textarea-wrapper">
-                <textarea
-                    class="input-textarea"
-                    id="input-chinese"
-                    placeholder="输入中文，获取地道美式英文表达..."
-                    rows="3"
-                    maxlength="500"
-                ></textarea>
+                <textarea class="input-textarea" id="input-chinese" placeholder="输入中文，获取地道美式英文表达..." rows="3"
+                    maxlength="500"></textarea>
                 <span class="char-count" id="char-count">0/500</span>
             </div>
             <div class="input-actions">
@@ -500,12 +609,19 @@
 
         <!-- History -->
         <section class="history-section">
-            <div class="history-header">历史记录</div>
+            <div class="history-header">历史记录 <span class="history-count" id="history-count"></span></div>
+            <div class="history-search">
+                <input type="text" class="search-input" id="search-input" placeholder="搜索翻译记录...">
+                <button class="search-clear" id="search-clear">✕</button>
+            </div>
             <div class="history-empty" id="history-empty">
                 <span class="empty-icon">✨</span>
                 <span>输入中文，开始你的翻译之旅</span>
             </div>
             <ul class="history-list" id="history-list"></ul>
+            <div class="load-more-wrapper" id="load-more-wrapper" style="display: none;">
+                <button class="btn-load-more" id="btn-load-more">加载更多</button>
+            </div>
         </section>
     </div>
 
@@ -515,6 +631,11 @@
     <script>
         // ── State ────────────────────────────────────────────
         let isTranslating = false;
+        const PAGE_SIZE = 20;
+        let historyOffset = 0;
+        let historyTotal = 0;
+        let searchQuery = '';
+        let searchDebounceTimer = null;
 
         // ── DOM ──────────────────────────────────────────────
         const inputEl = document.getElementById('input-chinese');
@@ -589,6 +710,12 @@
                 // Prepend to history.
                 addHistoryItem(data, true);
                 historyEmpty.style.display = 'none';
+                historyOffset++;
+                historyTotal++;
+                const historyCountEl = document.getElementById('history-count');
+                if (historyCountEl && historyTotal > 0) {
+                    historyCountEl.textContent = `(${Math.min(historyOffset, historyTotal)}/${historyTotal})`;
+                }
 
                 // Clear input if it was typed (not re-translate).
                 if (!chinese) {
@@ -621,6 +748,7 @@
         function addHistoryItem(t, prepend = false) {
             const li = document.createElement('li');
             li.className = 'history-item';
+            li.dataset.id = t.id;
             li.innerHTML = `
                 <div class="history-item-chinese">${escapeHtml(t.chinese)}</div>
                 <div class="history-item-english">${escapeHtml(t.english)}</div>
@@ -629,6 +757,7 @@
                     <div class="history-item-actions">
                         <button class="btn-icon" title="重新翻译" onclick="doTranslate('${escapeAttr(t.chinese)}')">🔄</button>
                         <button class="btn-icon" title="复制" onclick="copyToClipboard('${escapeAttr(t.english)}', this)">📋</button>
+                        <button class="btn-icon btn-delete" title="删除" onclick="deleteTranslation(${t.id}, this)">🗑️</button>
                     </div>
                 </div>
             `;
@@ -640,19 +769,114 @@
             }
         }
 
-        async function loadHistory() {
+        async function deleteTranslation(id, btnEl) {
+            if (!confirm('确定要删除这条记录吗？')) return;
+
             try {
-                const res = await fetch('/api/history');
+                const res = await fetch(`/api/translations/${id}`, { method: 'DELETE' });
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || '删除失败');
+                }
+
+                // Remove DOM element with fade-out animation.
+                const li = btnEl.closest('.history-item');
+                li.style.transition = 'opacity 0.3s ease, max-height 0.3s ease';
+                li.style.opacity = '0';
+                li.style.maxHeight = li.scrollHeight + 'px';
+                setTimeout(() => {
+                    li.style.maxHeight = '0';
+                    li.style.padding = '0';
+                    li.style.margin = '0';
+                    li.style.overflow = 'hidden';
+                }, 100);
+                setTimeout(() => {
+                    li.remove();
+                    historyOffset--;
+                    historyTotal--;
+                    const historyCountEl = document.getElementById('history-count');
+                    if (historyTotal > 0) {
+                        historyCountEl.textContent = `(${Math.min(historyOffset, historyTotal)}/${historyTotal})`;
+                    } else {
+                        historyCountEl.textContent = '';
+                        historyEmpty.style.display = '';
+                    }
+                }, 400);
+
+                showToast('已删除', 'success');
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function loadHistory(append = false) {
+            const loadMoreBtn = document.getElementById('btn-load-more');
+            const loadMoreWrapper = document.getElementById('load-more-wrapper');
+            const historyCountEl = document.getElementById('history-count');
+
+            if (loadMoreBtn) loadMoreBtn.disabled = true;
+
+            try {
+                const searchParam = searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : '';
+                const res = await fetch(`/api/history?limit=${PAGE_SIZE}&offset=${historyOffset}${searchParam}`);
                 const data = await res.json();
+
+                historyTotal = data.total || 0;
 
                 if (data.translations && data.translations.length > 0) {
                     historyEmpty.style.display = 'none';
                     data.translations.forEach(t => addHistoryItem(t));
+                    historyOffset += data.translations.length;
+                }
+
+                // Show/hide Load More button.
+                if (data.has_more) {
+                    loadMoreWrapper.style.display = '';
+                } else {
+                    loadMoreWrapper.style.display = 'none';
+                }
+
+                // Update count.
+                if (historyTotal > 0) {
+                    historyCountEl.textContent = `(${Math.min(historyOffset, historyTotal)}/${historyTotal})`;
                 }
             } catch (err) {
                 console.error('Failed to load history:', err);
+            } finally {
+                if (loadMoreBtn) loadMoreBtn.disabled = false;
             }
         }
+
+        // Load More button handler.
+        document.getElementById('btn-load-more').addEventListener('click', () => {
+            loadHistory(true);
+        });
+
+        // ── Search ────────────────────────────────────────────
+        const searchInputEl = document.getElementById('search-input');
+        const searchClearBtn = document.getElementById('search-clear');
+
+        searchInputEl.addEventListener('input', () => {
+            const val = searchInputEl.value.trim();
+            searchClearBtn.style.display = val ? 'flex' : 'none';
+
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                searchQuery = val;
+                historyOffset = 0;
+                historyList.innerHTML = '';
+                loadHistory();
+            }, 300);
+        });
+
+        searchClearBtn.addEventListener('click', () => {
+            searchInputEl.value = '';
+            searchClearBtn.style.display = 'none';
+            searchQuery = '';
+            historyOffset = 0;
+            historyList.innerHTML = '';
+            loadHistory();
+        });
 
         // ── Clipboard ────────────────────────────────────────
         async function copyToClipboard(text, btnEl) {
@@ -715,4 +939,5 @@
         loadHistory();
     </script>
 </body>
+
 </html>

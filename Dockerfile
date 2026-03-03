@@ -21,4 +21,7 @@ EXPOSE 8080
 ENV TZ=Asia/Shanghai
 ENV DB_PATH=/app/data/translations.db
 
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -qO- http://localhost:8080/health || exit 1
+
 CMD ["./app"]

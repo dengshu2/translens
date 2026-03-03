@@ -91,6 +91,7 @@ func InsertTranslation(db *sql.DB, chinese, english string) (Translation, error)
 }
 
 // GetAllTranslations returns every translation ordered by created_at DESC.
+// Used for CSV export where all records are needed.
 func GetAllTranslations(db *sql.DB) ([]Translation, error) {
 	rows, err := db.Query(
 		"SELECT id, chinese, english, created_at FROM translations ORDER BY created_at DESC",
@@ -109,4 +110,65 @@ func GetAllTranslations(db *sql.DB) ([]Translation, error) {
 		translations = append(translations, t)
 	}
 	return translations, rows.Err()
+}
+
+// GetTranslations returns a page of translations ordered by created_at DESC.
+// If search is non-empty, it filters by Chinese or English text.
+func GetTranslations(db *sql.DB, limit, offset int, search string) ([]Translation, int, error) {
+	var (
+		total int
+		rows  *sql.Rows
+		err   error
+	)
+
+	if search != "" {
+		pattern := "%" + search + "%"
+		err = db.QueryRow(
+			"SELECT COUNT(*) FROM translations WHERE chinese LIKE ? OR english LIKE ?",
+			pattern, pattern,
+		).Scan(&total)
+		if err != nil {
+			return nil, 0, fmt.Errorf("count translations: %w", err)
+		}
+		rows, err = db.Query(
+			"SELECT id, chinese, english, created_at FROM translations WHERE chinese LIKE ? OR english LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+			pattern, pattern, limit, offset,
+		)
+	} else {
+		err = db.QueryRow("SELECT COUNT(*) FROM translations").Scan(&total)
+		if err != nil {
+			return nil, 0, fmt.Errorf("count translations: %w", err)
+		}
+		rows, err = db.Query(
+			"SELECT id, chinese, english, created_at FROM translations ORDER BY created_at DESC LIMIT ? OFFSET ?",
+			limit, offset,
+		)
+	}
+	if err != nil {
+		return nil, 0, fmt.Errorf("query translations: %w", err)
+	}
+	defer rows.Close()
+
+	var translations []Translation
+	for rows.Next() {
+		var t Translation
+		if err := rows.Scan(&t.ID, &t.Chinese, &t.English, &t.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan translation: %w", err)
+		}
+		translations = append(translations, t)
+	}
+	return translations, total, rows.Err()
+}
+
+// DeleteTranslation removes a translation by ID. Returns true if a row was deleted.
+func DeleteTranslation(db *sql.DB, id int64) (bool, error) {
+	result, err := db.Exec("DELETE FROM translations WHERE id = ?", id)
+	if err != nil {
+		return false, fmt.Errorf("delete translation: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("rows affected: %w", err)
+	}
+	return affected > 0, nil
 }
