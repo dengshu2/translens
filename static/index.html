@@ -7,572 +7,16 @@
     <meta name="description" content="TransLens - 个人中英翻译学习工具，记录地道美式英文表达">
     <title>TransLens — 翻译学习</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <style>
-        /* ── Reset & Base ─────────────────────────────────── */
-        *,
-        *::before,
-        *::after {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --color-text: #37352F;
-            --color-text-secondary: #787774;
-            --color-text-light: #B4B4B0;
-            --color-bg: #FFFFFF;
-            --color-bg-hover: rgba(55, 53, 47, 0.08);
-            --color-bg-gray: #F7F6F3;
-            --color-border: #E3E2DE;
-            --color-blue: #2EAADC;
-            --color-blue-hover: #2496c4;
-            --color-blue-bg: #D3E5EF;
-            --color-green: #0F7B6C;
-            --color-green-bg: #DBEDDB;
-            --color-red: #E03E3E;
-            --color-red-bg: #FBE4E4;
-
-            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                Helvetica, "Apple Color Emoji", Arial, sans-serif,
-                "Segoe UI Emoji", "Segoe UI Symbol";
-            --font-size-xs: 12px;
-            --font-size-sm: 14px;
-            --font-size-base: 16px;
-            --font-size-lg: 20px;
-            --font-size-xl: 24px;
-            --line-height: 1.6;
-
-            --space-xs: 4px;
-            --space-sm: 8px;
-            --space-md: 16px;
-            --space-lg: 24px;
-            --space-xl: 48px;
-
-            --radius: 4px;
-            --transition: 0.2s ease;
-        }
-
-        body {
-            font-family: var(--font-family);
-            font-size: var(--font-size-base);
-            line-height: var(--line-height);
-            color: var(--color-text);
-            background: var(--color-bg);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-
-        /* ── Layout ───────────────────────────────────────── */
-        .app {
-            max-width: 720px;
-            margin: 0 auto;
-            padding: var(--space-lg);
-            min-height: 100vh;
-        }
-
-        /* ── Header ───────────────────────────────────────── */
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: var(--space-md) 0;
-            margin-bottom: var(--space-xl);
-        }
-
-        .header-title {
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
-            font-size: var(--font-size-lg);
-            font-weight: 600;
-            color: var(--color-text);
-            letter-spacing: -0.02em;
-        }
-
-        .header-title .icon {
-            font-size: 22px;
-        }
-
-        .btn-export {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            font-size: var(--font-size-sm);
-            font-family: var(--font-family);
-            color: var(--color-text-secondary);
-            background: transparent;
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius);
-            cursor: pointer;
-            transition: background var(--transition);
-            text-decoration: none;
-        }
-
-        .btn-export:hover {
-            background: var(--color-bg-hover);
-        }
-
-        /* ── Input Section ────────────────────────────────── */
-        .input-section {
-            margin-bottom: var(--space-lg);
-        }
-
-        .textarea-wrapper {
-            position: relative;
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius);
-            transition: border-color var(--transition), box-shadow var(--transition);
-        }
-
-        .textarea-wrapper:focus-within {
-            border-color: var(--color-blue);
-            box-shadow: 0 0 0 2px rgba(46, 170, 220, 0.15);
-        }
-
-        .textarea-wrapper.disabled {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-
-        .input-textarea {
-            width: 100%;
-            min-height: 100px;
-            padding: var(--space-md);
-            padding-bottom: 32px;
-            font-family: var(--font-family);
-            font-size: var(--font-size-base);
-            line-height: var(--line-height);
-            color: var(--color-text);
-            background: transparent;
-            border: none;
-            outline: none;
-            resize: vertical;
-        }
-
-        .input-textarea::placeholder {
-            color: var(--color-text-light);
-        }
-
-        .char-count {
-            position: absolute;
-            bottom: 8px;
-            right: 12px;
-            font-size: var(--font-size-xs);
-            color: var(--color-text-light);
-            pointer-events: none;
-        }
-
-        .char-count.warning {
-            color: var(--color-red);
-        }
-
-        .input-actions {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: var(--space-sm);
-            margin-top: var(--space-md);
-        }
-
-        .hint-text {
-            font-size: var(--font-size-xs);
-            color: var(--color-text-light);
-            margin-right: auto;
-        }
-
-        .btn-translate {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 20px;
-            font-size: var(--font-size-sm);
-            font-weight: 500;
-            font-family: var(--font-family);
-            color: #FFFFFF;
-            background: var(--color-blue);
-            border: none;
-            border-radius: var(--radius);
-            cursor: pointer;
-            transition: background var(--transition), opacity var(--transition);
-        }
-
-        .btn-translate:hover:not(:disabled) {
-            background: var(--color-blue-hover);
-        }
-
-        .btn-translate:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* ── Result Section ───────────────────────────────── */
-        .result-section {
-            margin-bottom: var(--space-xl);
-            animation: fadeIn 0.3s ease;
-        }
-
-        .result-card {
-            position: relative;
-            padding: var(--space-lg);
-            background: var(--color-bg-gray);
-            border-radius: var(--radius);
-        }
-
-        .result-label {
-            display: block;
-            font-size: var(--font-size-xs);
-            font-weight: 500;
-            color: var(--color-text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: var(--space-sm);
-        }
-
-        .result-english {
-            font-size: var(--font-size-xl);
-            font-weight: 400;
-            line-height: 1.4;
-            color: var(--color-text);
-            padding-right: 40px;
-        }
-
-        .result-chinese {
-            margin-top: var(--space-md);
-            font-size: var(--font-size-sm);
-            color: var(--color-text-secondary);
-        }
-
-        .result-copy-btn {
-            position: absolute;
-            top: var(--space-md);
-            right: var(--space-md);
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: transparent;
-            border: none;
-            border-radius: var(--radius);
-            cursor: pointer;
-            color: var(--color-text-secondary);
-            font-size: 16px;
-            transition: background var(--transition), color var(--transition);
-        }
-
-        .result-copy-btn:hover {
-            background: var(--color-bg-hover);
-            color: var(--color-text);
-        }
-
-        .result-copy-btn.copied {
-            color: var(--color-green);
-        }
-
-        /* ── History Section ──────────────────────────────── */
-        .history-section {
-            border-top: 1px solid var(--color-border);
-            padding-top: var(--space-lg);
-        }
-
-        .history-header {
-            font-size: var(--font-size-sm);
-            font-weight: 500;
-            color: var(--color-text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: var(--space-lg);
-        }
-
-        .history-empty {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: var(--space-xl) 0;
-            color: var(--color-text-light);
-            font-size: var(--font-size-sm);
-        }
-
-        .history-empty .empty-icon {
-            font-size: 32px;
-            margin-bottom: var(--space-md);
-        }
-
-        .history-list {
-            list-style: none;
-        }
-
-        .history-item {
-            padding: var(--space-md) 0;
-            border-bottom: 1px solid var(--color-border);
-            animation: fadeIn 0.3s ease;
-        }
-
-        .history-item:last-child {
-            border-bottom: none;
-        }
-
-        .history-item-chinese {
-            font-size: var(--font-size-sm);
-            color: var(--color-text-secondary);
-            margin-bottom: var(--space-xs);
-        }
-
-        .history-item-english {
-            font-size: var(--font-size-base);
-            color: var(--color-text);
-            line-height: 1.5;
-            margin-bottom: var(--space-sm);
-        }
-
-        .history-item-meta {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .history-item-time {
-            font-size: var(--font-size-xs);
-            color: var(--color-text-light);
-        }
-
-        .history-item-actions {
-            display: flex;
-            gap: var(--space-xs);
-            opacity: 0;
-            transition: opacity var(--transition);
-        }
-
-        .history-item:hover .history-item-actions {
-            opacity: 1;
-        }
-
-        .btn-icon {
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: transparent;
-            border: none;
-            border-radius: var(--radius);
-            cursor: pointer;
-            color: var(--color-text-secondary);
-            font-size: 14px;
-            transition: background var(--transition), color var(--transition);
-        }
-
-        .btn-icon:hover {
-            background: var(--color-bg-hover);
-            color: var(--color-text);
-        }
-
-        .btn-icon.copied {
-            color: var(--color-green);
-        }
-
-        .btn-icon[title="重新翻译"].loading {
-            animation: spin 0.6s linear infinite;
-        }
-
-        /* ── Toast ────────────────────────────────────────── */
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            pointer-events: none;
-        }
-
-        .toast {
-            padding: 10px 20px;
-            border-radius: var(--radius);
-            font-size: var(--font-size-sm);
-            color: #fff;
-            pointer-events: auto;
-            animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
-            margin-bottom: var(--space-sm);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-        }
-
-        .toast.error {
-            background: var(--color-red);
-        }
-
-        .toast.success {
-            background: var(--color-green);
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes toastIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes toastOut {
-            from {
-                opacity: 1;
-            }
-
-            to {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-        }
-
-        /* ── Load More ────────────────────────────────────── */
-        .load-more-wrapper {
-            display: flex;
-            justify-content: center;
-            padding: var(--space-lg) 0;
-        }
-
-        .btn-load-more {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 24px;
-            font-size: var(--font-size-sm);
-            font-family: var(--font-family);
-            color: var(--color-text-secondary);
-            background: transparent;
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius);
-            cursor: pointer;
-            transition: background var(--transition), color var(--transition);
-        }
-
-        .btn-load-more:hover:not(:disabled) {
-            background: var(--color-bg-hover);
-            color: var(--color-text);
-        }
-
-        .btn-load-more:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .history-count {
-            font-size: var(--font-size-xs);
-            color: var(--color-text-light);
-            margin-left: var(--space-sm);
-        }
-
-        .history-search {
-            position: relative;
-            margin-bottom: var(--space-md);
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 8px 36px 8px 12px;
-            font-size: var(--font-size-sm);
-            font-family: var(--font-family);
-            color: var(--color-text);
-            background: var(--color-bg-gray);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius);
-            outline: none;
-            transition: border-color var(--transition), box-shadow var(--transition);
-        }
-
-        .search-input:focus {
-            border-color: var(--color-blue);
-            box-shadow: 0 0 0 2px rgba(46, 170, 220, 0.15);
-        }
-
-        .search-input::placeholder {
-            color: var(--color-text-light);
-        }
-
-        .search-clear {
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 20px;
-            height: 20px;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            color: var(--color-text-light);
-            font-size: 14px;
-            border-radius: 50%;
-            transition: color var(--transition);
-        }
-
-        .search-clear:hover {
-            color: var(--color-text);
-        }
-
-        /* ── Responsive ───────────────────────────────────── */
-        @media (max-width: 768px) {
-            .app {
-                padding: var(--space-md);
-            }
-
-            .header {
-                margin-bottom: var(--space-lg);
-            }
-
-            .result-english {
-                font-size: var(--font-size-lg);
-            }
-
-            .hint-text {
-                display: none;
-            }
-
-            .history-item-actions {
-                opacity: 1;
-            }
-        }
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
+    <a href="#input-chinese" class="skip-link">跳至主要内容</a>
+
     <div class="app">
         <!-- Header -->
         <header class="header">
@@ -580,15 +24,21 @@
                 <span class="icon">🌐</span>
                 TransLens
             </h1>
-            <a href="/api/export/csv" class="btn-export" id="btn-export">
-                <span>↓</span> Export CSV
-            </a>
+            <div class="header-actions">
+                <button class="btn-header btn-theme" id="btn-theme" title="切换主题" aria-label="切换深色或浅色主题">
+                    <span id="theme-icon">🌙</span>
+                </button>
+                <a href="/api/export/csv" class="btn-header" id="btn-export">
+                    <span>↓</span> Export CSV
+                </a>
+            </div>
         </header>
 
         <!-- Input -->
-        <section class="input-section">
+        <section class="input-section" aria-label="翻译输入">
             <div class="textarea-wrapper" id="textarea-wrapper">
-                <textarea class="input-textarea" id="input-chinese" placeholder="输入中文，获取地道美式英文表达..." rows="3"
+                <textarea class="input-textarea" id="input-chinese"
+                    placeholder="输入中文，获取地道美式英文表达..." rows="3"
                     maxlength="500"></textarea>
                 <span class="char-count" id="char-count">0/500</span>
             </div>
@@ -601,346 +51,83 @@
         </section>
 
         <!-- Result (hidden by default) -->
-        <section class="result-section" id="result-section" style="display: none;">
+        <section class="result-section" id="result-section" style="display: none;" aria-label="翻译结果">
             <div class="result-card">
                 <span class="result-label">Translation</span>
                 <div class="result-english" id="result-english"></div>
                 <div class="result-chinese" id="result-chinese"></div>
-                <button class="result-copy-btn" id="result-copy-btn" title="复制">📋</button>
+                <button class="result-copy-btn" id="result-copy-btn" title="复制" aria-label="复制翻译结果">📋</button>
             </div>
         </section>
 
         <!-- History -->
-        <section class="history-section">
+        <section class="history-section" aria-label="翻译历史">
             <div class="history-header">历史记录 <span class="history-count" id="history-count"></span></div>
+
             <div class="history-search">
-                <input type="text" class="search-input" id="search-input" placeholder="搜索翻译记录...">
-                <button class="search-clear" id="search-clear">✕</button>
+                <input type="search" class="search-input" id="search-input" placeholder="搜索翻译记录...">
+                <button class="search-clear" id="search-clear" aria-label="清除搜索">✕</button>
             </div>
-            <div class="history-empty" id="history-empty">
-                <span class="empty-icon">✨</span>
-                <span>输入中文，开始你的翻译之旅</span>
+
+            <!-- Skeleton loader -->
+            <div class="skeleton-list" id="skeleton-list">
+                <div class="skeleton-item">
+                    <div class="skeleton-line short"></div>
+                    <div class="skeleton-line long"></div>
+                    <div class="skeleton-line meta"></div>
+                </div>
+                <div class="skeleton-item">
+                    <div class="skeleton-line short"></div>
+                    <div class="skeleton-line long"></div>
+                    <div class="skeleton-line meta"></div>
+                </div>
+                <div class="skeleton-item">
+                    <div class="skeleton-line short"></div>
+                    <div class="skeleton-line long"></div>
+                    <div class="skeleton-line meta"></div>
+                </div>
             </div>
+
+            <!-- Initial empty state -->
+            <div class="state-empty" id="history-empty">
+                <span class="state-icon">📝</span>
+                <span class="state-title">翻译记录为空</span>
+                <span class="state-text">在上方输入中文内容，所有翻译结果会自动保存在这里</span>
+            </div>
+
+            <!-- Search no results -->
+            <div class="state-empty" id="search-empty" style="display: none;">
+                <span class="state-icon">🔍</span>
+                <span class="state-title">没有找到匹配的记录</span>
+                <span class="state-text">尝试使用不同的关键词搜索</span>
+            </div>
+
+            <!-- Error state -->
+            <div class="state-error" id="history-error">
+                <span class="state-icon">⚠️</span>
+                <span class="state-text">加载失败，请检查网络连接</span>
+                <button class="btn-retry" id="btn-retry">重试</button>
+            </div>
+
             <ul class="history-list" id="history-list"></ul>
+
             <div class="load-more-wrapper" id="load-more-wrapper" style="display: none;">
                 <button class="btn-load-more" id="btn-load-more">加载更多</button>
             </div>
         </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <span>TransLens v1.0</span>
+            <span class="footer-sep">·</span>
+            <span>翻译由 Gemini 驱动</span>
+        </footer>
     </div>
 
     <!-- Toast container -->
     <div class="toast-container" id="toast-container"></div>
 
-    <script>
-        // ── State ────────────────────────────────────────────
-        let isTranslating = false;
-        const PAGE_SIZE = 20;
-        let historyOffset = 0;
-        let historyTotal = 0;
-        let searchQuery = '';
-        let searchDebounceTimer = null;
-
-        // ── DOM ──────────────────────────────────────────────
-        const inputEl = document.getElementById('input-chinese');
-        const charCountEl = document.getElementById('char-count');
-        const textareaWrapper = document.getElementById('textarea-wrapper');
-        const btnTranslate = document.getElementById('btn-translate');
-        const resultSection = document.getElementById('result-section');
-        const resultEnglish = document.getElementById('result-english');
-        const resultChinese = document.getElementById('result-chinese');
-        const resultCopyBtn = document.getElementById('result-copy-btn');
-        const historyEmpty = document.getElementById('history-empty');
-        const historyList = document.getElementById('history-list');
-        const toastContainer = document.getElementById('toast-container');
-
-        // ── Char count ───────────────────────────────────────
-        inputEl.addEventListener('input', () => {
-            const len = [...inputEl.value].length;
-            charCountEl.textContent = `${len}/500`;
-            charCountEl.classList.toggle('warning', len > 450);
-            btnTranslate.disabled = inputEl.value.trim().length === 0;
-        });
-
-        // ── Keyboard shortcut ────────────────────────────────
-        inputEl.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                if (!isTranslating && inputEl.value.trim()) {
-                    doTranslate();
-                }
-            }
-        });
-
-        // ── Translate button ─────────────────────────────────
-        btnTranslate.addEventListener('click', () => {
-            if (!isTranslating && inputEl.value.trim()) {
-                doTranslate();
-            }
-        });
-
-        // ── Copy result ──────────────────────────────────────
-        resultCopyBtn.addEventListener('click', () => {
-            copyToClipboard(resultEnglish.textContent, resultCopyBtn);
-        });
-
-        // ── Translate logic ──────────────────────────────────
-        async function doTranslate(chinese) {
-            const text = chinese || inputEl.value.trim();
-            if (!text || isTranslating) return;
-
-            setLoading(true);
-
-            try {
-                const res = await fetch('/api/translate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chinese: text }),
-                });
-
-                const data = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(data.error || '翻译失败');
-                }
-
-                // Show result.
-                resultEnglish.textContent = data.english;
-                resultChinese.textContent = data.chinese;
-                resultSection.style.display = '';
-                resultCopyBtn.classList.remove('copied');
-                resultCopyBtn.textContent = '📋';
-
-                // Prepend to history.
-                addHistoryItem(data, true);
-                historyEmpty.style.display = 'none';
-                historyOffset++;
-                historyTotal++;
-                const historyCountEl = document.getElementById('history-count');
-                if (historyCountEl && historyTotal > 0) {
-                    historyCountEl.textContent = `(${Math.min(historyOffset, historyTotal)}/${historyTotal})`;
-                }
-
-                // Clear input if it was typed (not re-translate).
-                if (!chinese) {
-                    inputEl.value = '';
-                    charCountEl.textContent = '0/500';
-                    btnTranslate.disabled = true;
-                }
-
-            } catch (err) {
-                showToast(err.message, 'error');
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        function setLoading(loading) {
-            isTranslating = loading;
-            btnTranslate.disabled = loading;
-            textareaWrapper.classList.toggle('disabled', loading);
-
-            const btnText = btnTranslate.querySelector('.btn-text');
-            if (loading) {
-                btnTranslate.innerHTML = '<span class="spinner"></span><span class="btn-text">翻译中...</span>';
-            } else {
-                btnTranslate.innerHTML = '<span class="btn-text">翻译</span>';
-            }
-        }
-
-        // ── History ──────────────────────────────────────────
-        function addHistoryItem(t, prepend = false) {
-            const li = document.createElement('li');
-            li.className = 'history-item';
-            li.dataset.id = t.id;
-            li.innerHTML = `
-                <div class="history-item-chinese">${escapeHtml(t.chinese)}</div>
-                <div class="history-item-english">${escapeHtml(t.english)}</div>
-                <div class="history-item-meta">
-                    <span class="history-item-time" title="${new Date(t.created_at).toLocaleString()}">${timeAgo(t.created_at)}</span>
-                    <div class="history-item-actions">
-                        <button class="btn-icon" title="重新翻译" onclick="doTranslate('${escapeAttr(t.chinese)}')">🔄</button>
-                        <button class="btn-icon" title="复制" onclick="copyToClipboard('${escapeAttr(t.english)}', this)">📋</button>
-                        <button class="btn-icon btn-delete" title="删除" onclick="deleteTranslation(${t.id}, this)">🗑️</button>
-                    </div>
-                </div>
-            `;
-
-            if (prepend) {
-                historyList.prepend(li);
-            } else {
-                historyList.appendChild(li);
-            }
-        }
-
-        async function deleteTranslation(id, btnEl) {
-            if (!confirm('确定要删除这条记录吗？')) return;
-
-            try {
-                const res = await fetch(`/api/translations/${id}`, { method: 'DELETE' });
-                if (!res.ok) {
-                    const data = await res.json();
-                    throw new Error(data.error || '删除失败');
-                }
-
-                // Remove DOM element with fade-out animation.
-                const li = btnEl.closest('.history-item');
-                li.style.transition = 'opacity 0.3s ease, max-height 0.3s ease';
-                li.style.opacity = '0';
-                li.style.maxHeight = li.scrollHeight + 'px';
-                setTimeout(() => {
-                    li.style.maxHeight = '0';
-                    li.style.padding = '0';
-                    li.style.margin = '0';
-                    li.style.overflow = 'hidden';
-                }, 100);
-                setTimeout(() => {
-                    li.remove();
-                    historyOffset--;
-                    historyTotal--;
-                    const historyCountEl = document.getElementById('history-count');
-                    if (historyTotal > 0) {
-                        historyCountEl.textContent = `(${Math.min(historyOffset, historyTotal)}/${historyTotal})`;
-                    } else {
-                        historyCountEl.textContent = '';
-                        historyEmpty.style.display = '';
-                    }
-                }, 400);
-
-                showToast('已删除', 'success');
-            } catch (err) {
-                showToast(err.message, 'error');
-            }
-        }
-
-        async function loadHistory(append = false) {
-            const loadMoreBtn = document.getElementById('btn-load-more');
-            const loadMoreWrapper = document.getElementById('load-more-wrapper');
-            const historyCountEl = document.getElementById('history-count');
-
-            if (loadMoreBtn) loadMoreBtn.disabled = true;
-
-            try {
-                const searchParam = searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : '';
-                const res = await fetch(`/api/history?limit=${PAGE_SIZE}&offset=${historyOffset}${searchParam}`);
-                const data = await res.json();
-
-                historyTotal = data.total || 0;
-
-                if (data.translations && data.translations.length > 0) {
-                    historyEmpty.style.display = 'none';
-                    data.translations.forEach(t => addHistoryItem(t));
-                    historyOffset += data.translations.length;
-                }
-
-                // Show/hide Load More button.
-                if (data.has_more) {
-                    loadMoreWrapper.style.display = '';
-                } else {
-                    loadMoreWrapper.style.display = 'none';
-                }
-
-                // Update count.
-                if (historyTotal > 0) {
-                    historyCountEl.textContent = `(${Math.min(historyOffset, historyTotal)}/${historyTotal})`;
-                }
-            } catch (err) {
-                console.error('Failed to load history:', err);
-            } finally {
-                if (loadMoreBtn) loadMoreBtn.disabled = false;
-            }
-        }
-
-        // Load More button handler.
-        document.getElementById('btn-load-more').addEventListener('click', () => {
-            loadHistory(true);
-        });
-
-        // ── Search ────────────────────────────────────────────
-        const searchInputEl = document.getElementById('search-input');
-        const searchClearBtn = document.getElementById('search-clear');
-
-        searchInputEl.addEventListener('input', () => {
-            const val = searchInputEl.value.trim();
-            searchClearBtn.style.display = val ? 'flex' : 'none';
-
-            clearTimeout(searchDebounceTimer);
-            searchDebounceTimer = setTimeout(() => {
-                searchQuery = val;
-                historyOffset = 0;
-                historyList.innerHTML = '';
-                loadHistory();
-            }, 300);
-        });
-
-        searchClearBtn.addEventListener('click', () => {
-            searchInputEl.value = '';
-            searchClearBtn.style.display = 'none';
-            searchQuery = '';
-            historyOffset = 0;
-            historyList.innerHTML = '';
-            loadHistory();
-        });
-
-        // ── Clipboard ────────────────────────────────────────
-        async function copyToClipboard(text, btnEl) {
-            try {
-                await navigator.clipboard.writeText(text);
-                const original = btnEl.textContent;
-                btnEl.textContent = '✓';
-                btnEl.classList.add('copied');
-                setTimeout(() => {
-                    btnEl.textContent = original;
-                    btnEl.classList.remove('copied');
-                }, 1500);
-            } catch (err) {
-                showToast('复制失败', 'error');
-            }
-        }
-
-        // ── Toast ────────────────────────────────────────────
-        function showToast(message, type = 'error') {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            toastContainer.appendChild(toast);
-
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
-        }
-
-        // ── Time helper ──────────────────────────────────────
-        function timeAgo(dateStr) {
-            const now = new Date();
-            const date = new Date(dateStr);
-            const seconds = Math.floor((now - date) / 1000);
-
-            if (seconds < 60) return '刚刚';
-            const minutes = Math.floor(seconds / 60);
-            if (minutes < 60) return `${minutes} 分钟前`;
-            const hours = Math.floor(minutes / 60);
-            if (hours < 24) return `${hours} 小时前`;
-            const days = Math.floor(hours / 24);
-            if (days < 30) return `${days} 天前`;
-            const months = Math.floor(days / 30);
-            if (months < 12) return `${months} 个月前`;
-            return `${Math.floor(months / 12)} 年前`;
-        }
-
-        // ── Escape helpers ───────────────────────────────────
-        function escapeHtml(str) {
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
-
-        function escapeAttr(str) {
-            return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
-        }
-
-        // ── Init ─────────────────────────────────────────────
-        loadHistory();
-    </script>
+    <script src="/app.js"></script>
 </body>
 
 </html>
