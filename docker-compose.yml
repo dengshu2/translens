@@ -4,11 +4,19 @@ services:
     container_name: translens
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:7070:8080"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3-flash-preview}
+      - AUTH_USERNAME=${AUTH_USERNAME}
+      - AUTH_PASSWORD=${AUTH_PASSWORD}
       - PORT=8080
       - DB_PATH=/app/data/translations.db
     volumes:
       - ./data:/app/data
+    networks:
+      - npm-network
+
+networks:
+  npm-network:
+    external: true

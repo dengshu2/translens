@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"log"
 	"net/http"
 	"os"
@@ -11,9 +12,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// ── Load .env (optional, ignored in Docker/production) ──────────
+	_ = godotenv.Load()
+
 	// ── Configuration ────────────────────────────────────────────────
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
@@ -34,6 +39,9 @@ func main() {
 	if dbPath == "" {
 		dbPath = "./data/translations.db"
 	}
+
+	authUser := os.Getenv("AUTH_USERNAME")
+	authPass := os.Getenv("AUTH_PASSWORD")
 
 	// ── Database ─────────────────────────────────────────────────────
 	db, err := InitDB(dbPath)
@@ -58,6 +66,12 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
+	if authUser != "" && authPass != "" {
+		r.Use(basicAuth(authUser, authPass))
+		log.Println("Basic Auth enabled")
+	} else {
+		log.Println("WARNING: Basic Auth disabled (AUTH_USERNAME/AUTH_PASSWORD not set)")
+	}
 
 	// API routes.
 	r.Route("/api", func(r chi.Router) {
@@ -102,4 +116,21 @@ func main() {
 
 	db.Close()
 	log.Println("Server stopped gracefully")
+}
+
+// basicAuth returns a middleware that enforces HTTP Basic Authentication.
+func basicAuth(username, password string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			u, p, ok := r.BasicAuth()
+			if !ok ||
+				subtle.ConstantTimeCompare([]byte(u), []byte(username)) != 1 ||
+				subtle.ConstantTimeCompare([]byte(p), []byte(password)) != 1 {
+				w.Header().Set("WWW-Authenticate", `Basic realm="TransLens"`)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
