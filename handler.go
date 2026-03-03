@@ -1,0 +1,124 @@
+package main
+
+import (
+	"database/sql"
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"strings"
+	"time"
+	"unicode/utf8"
+)
+
+// handler holds shared dependencies for HTTP handlers.
+type handler struct {
+	db     *sql.DB
+	gemini *GeminiClient
+}
+
+// respondJSON writes a JSON response with the given status code.
+func respondJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}
+
+// respondError writes a JSON error response.
+func respondError(w http.ResponseWriter, status int, message string) {
+	respondJSON(w, status, map[string]string{"error": message})
+}
+
+// handleTranslate handles POST /api/translate
+func (h *handler) handleTranslate(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Chinese string `json:"chinese"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "无效的请求格式")
+		return
+	}
+
+	// Input validation.
+	req.Chinese = strings.TrimSpace(req.Chinese)
+	if req.Chinese == "" {
+		respondError(w, http.StatusBadRequest, "请输入中文内容")
+		return
+	}
+	if utf8.RuneCountInString(req.Chinese) > 500 {
+		respondError(w, http.StatusBadRequest, "输入内容不能超过 500 个字符")
+		return
+	}
+
+	// Call Gemini to translate.
+	english, err := h.gemini.Translate(r.Context(), req.Chinese)
+	if err != nil {
+		log.Printf("Translation error: %v", err)
+		respondError(w, http.StatusInternalServerError, fmt.Sprintf("翻译失败：%v", err))
+		return
+	}
+
+	// Save to database.
+	t, err := InsertTranslation(h.db, req.Chinese, english)
+	if err != nil {
+		log.Printf("Database error: %v", err)
+		respondError(w, http.StatusInternalServerError, "保存翻译记录失败")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, t)
+}
+
+// handleHistory handles GET /api/history
+func (h *handler) handleHistory(w http.ResponseWriter, r *http.Request) {
+	translations, err := GetAllTranslations(h.db)
+	if err != nil {
+		log.Printf("Query error: %v", err)
+		respondError(w, http.StatusInternalServerError, "获取历史记录失败")
+		return
+	}
+
+	// Return empty array instead of null.
+	if translations == nil {
+		translations = []Translation{}
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"translations": translations,
+	})
+}
+
+// handleExportCSV handles GET /api/export/csv
+func (h *handler) handleExportCSV(w http.ResponseWriter, r *http.Request) {
+	translations, err := GetAllTranslations(h.db)
+	if err != nil {
+		log.Printf("Export error: %v", err)
+		respondError(w, http.StatusInternalServerError, "导出失败")
+		return
+	}
+
+	filename := fmt.Sprintf("translations_%s.csv", time.Now().Format("20060102"))
+
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+
+	// Write UTF-8 BOM for Excel compatibility.
+	w.Write([]byte{0xEF, 0xBB, 0xBF})
+
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+
+	// Header row.
+	writer.Write([]string{"id", "chinese", "english", "created_at"})
+
+	// Data rows.
+	for _, t := range translations {
+		writer.Write([]string{
+			fmt.Sprintf("%d", t.ID),
+			t.Chinese,
+			t.English,
+			t.CreatedAt.Format(time.RFC3339),
+		})
+	}
+}

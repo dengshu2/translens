@@ -1,0 +1,14 @@
+services:
+  translens:
+    build: .
+    container_name: translens
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3-flash-preview}
+      - PORT=8080
+      - DB_PATH=/app/data/translations.db
+    volumes:
+      - ./data:/app/data
