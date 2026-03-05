@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/subtle"
 	"log"
 	"net/http"
 	"os"
@@ -59,7 +58,7 @@ func main() {
 	log.Printf("OpenRouter client initialized with model: %s", model)
 
 	// ── HTTP Handler ─────────────────────────────────────────────────
-	h := &handler{db: db, gemini: or}
+	h := &handler{db: db, translator: or}
 
 	// ── Router ───────────────────────────────────────────────────────
 	r := chi.NewRouter()
@@ -135,35 +134,4 @@ func main() {
 	log.Println("Server stopped gracefully")
 }
 
-// basicAuth returns a middleware that enforces HTTP Basic Authentication.
-func basicAuth(username, password string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			u, p, ok := r.BasicAuth()
-			if !ok ||
-				subtle.ConstantTimeCompare([]byte(u), []byte(username)) != 1 ||
-				subtle.ConstantTimeCompare([]byte(p), []byte(password)) != 1 {
-				w.Header().Set("WWW-Authenticate", `Basic realm="TransLens"`)
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
 
-// corsMiddleware adds CORS headers for cross-origin requests.
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}

@@ -30,7 +30,7 @@ func newTestHandler(t *testing.T, translator Translator) *handler {
 	}
 	t.Cleanup(func() { db.Close() })
 
-	return &handler{db: db, gemini: translator}
+	return &handler{db: db, translator: translator}
 }
 
 // ── POST /api/translate ─────────────────────────────────────
@@ -127,7 +127,7 @@ func TestHandleTranslate_InvalidJSON(t *testing.T) {
 	}
 }
 
-func TestHandleTranslate_GeminiError(t *testing.T) {
+func TestHandleTranslate_TranslatorError(t *testing.T) {
 	h := newTestHandler(t, &mockTranslator{
 		err: io.ErrUnexpectedEOF, // simulate API failure
 	})

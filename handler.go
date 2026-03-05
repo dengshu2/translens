@@ -23,8 +23,8 @@ type Translator interface {
 
 // handler holds shared dependencies for HTTP handlers.
 type handler struct {
-	db     *sql.DB
-	gemini Translator
+	db         *sql.DB
+	translator Translator
 }
 
 // respondJSON writes a JSON response with the given status code.
@@ -61,7 +61,7 @@ func (h *handler) handleTranslate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Call OpenRouter to translate.
-	english, err := h.gemini.Translate(r.Context(), req.Chinese)
+	english, err := h.translator.Translate(r.Context(), req.Chinese)
 	if err != nil {
 		log.Printf("Translation error: %v", err)
 		respondError(w, http.StatusInternalServerError, "翻译失败，请稍后重试")
