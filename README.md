@@ -4,7 +4,7 @@
 
 ## ✨ 功能特性
 
-- **中译英翻译** — 基于 Google Gemini API，翻译为地道、口语化的美式英文
+- **中译英翻译** — 基于 [OpenRouter](https://openrouter.ai/) 接入 AI 模型，翻译为地道、口语化的美式英文
 - **翻译历史** — 自动保存每条翻译记录，支持回顾与重新翻译
 - **搜索与分页** — 支持关键词搜索（中/英），分页加载历史记录
 - **删除记录** — 支持删除单条翻译记录
@@ -19,7 +19,7 @@
 | 层级 | 技术 |
 |---|---|
 | 后端 | Go 1.24 + [Chi](https://github.com/go-chi/chi) Router |
-| AI | [Google Gemini API](https://ai.google.dev/) (genai SDK) |
+| AI | [OpenRouter API](https://openrouter.ai/)（兼容 OpenAI 接口，支持多种模型） |
 | 数据库 | SQLite ([modernc.org/sqlite](https://modernc.org/sqlite)，纯 Go 实现，无需 CGO) |
 | 前端 | 原生 HTML/CSS/JS 单文件，Notion 风格设计 |
 | 部署 | Docker + Docker Compose |
@@ -30,7 +30,7 @@
 translens/
 ├── main.go              # 入口：配置加载、路由、服务启停
 ├── handler.go           # HTTP 处理器：翻译、历史、导出
-├── gemini.go            # Gemini API 客户端封装
+├── openrouter.go        # OpenRouter API 客户端封装
 ├── db.go                # SQLite 数据库初始化与 CRUD
 ├── static/
 │   └── index.html       # 前端单页应用
@@ -47,7 +47,7 @@ translens/
 
 - Go 1.24+（本地开发）
 - Docker & Docker Compose（容器部署）
-- [Google Gemini API Key](https://aistudio.google.com/apikey)
+- [OpenRouter API Key](https://openrouter.ai/keys)
 
 ### 本地开发
 
@@ -87,8 +87,8 @@ docker compose logs -f
 
 | 变量 | 必填 | 默认值 | 说明 |
 |---|---|---|---|
-| `GEMINI_API_KEY` | ✅ | — | Google Gemini API 密钥 |
-| `GEMINI_MODEL` | — | `gemini-3-flash-preview` | Gemini 模型名称 |
+| `OPENROUTER_API_KEY` | ✅ | — | OpenRouter API 密钥 |
+| `OPENROUTER_MODEL` | — | `google/gemini-2.5-flash-preview` | 模型名称（支持 OpenRouter 上所有模型） |
 | `AUTH_USERNAME` | — | —（不设则跳过认证） | Basic Auth 用户名 |
 | `AUTH_PASSWORD` | — | —（不设则跳过认证） | Basic Auth 密码 |
 | `PORT` | — | `8080` | 服务监听端口 |

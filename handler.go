@@ -60,7 +60,7 @@ func (h *handler) handleTranslate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Call Gemini to translate.
+	// Call OpenRouter to translate.
 	english, err := h.gemini.Translate(r.Context(), req.Chinese)
 	if err != nil {
 		log.Printf("Translation error: %v", err)

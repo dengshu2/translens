@@ -20,14 +20,14 @@ func main() {
 	_ = godotenv.Load()
 
 	// ── Configuration ────────────────────────────────────────────────
-	apiKey := os.Getenv("GEMINI_API_KEY")
+	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	if apiKey == "" {
-		log.Fatal("GEMINI_API_KEY environment variable is required")
+		log.Fatal("OPENROUTER_API_KEY environment variable is required")
 	}
 
-	model := os.Getenv("GEMINI_MODEL")
+	model := os.Getenv("OPENROUTER_MODEL")
 	if model == "" {
-		model = "gemini-3-flash-preview"
+		model = "google/gemini-2.5-flash-preview"
 	}
 
 	port := os.Getenv("PORT")
@@ -51,15 +51,15 @@ func main() {
 	defer db.Close()
 	log.Printf("Database initialized at %s", dbPath)
 
-	// ── Gemini Client ────────────────────────────────────────────────
-	gemini, err := NewGeminiClient(apiKey, model)
+	// ── OpenRouter Client ───────────────────────────────────────────
+	or, err := NewOpenRouterClient(apiKey, model)
 	if err != nil {
-		log.Fatalf("Failed to initialize Gemini client: %v", err)
+		log.Fatalf("Failed to initialize OpenRouter client: %v", err)
 	}
-	log.Printf("Gemini client initialized with model: %s", model)
+	log.Printf("OpenRouter client initialized with model: %s", model)
 
 	// ── HTTP Handler ─────────────────────────────────────────────────
-	h := &handler{db: db, gemini: gemini}
+	h := &handler{db: db, gemini: or}
 
 	// ── Router ───────────────────────────────────────────────────────
 	r := chi.NewRouter()
