@@ -57,6 +57,10 @@ function switchMode(mode) {
     if (!isTranslate && correctHistoryOffset === 0 && !correctHistoryLoaded) {
         loadCorrectionHistory();
     }
+
+    // Focus the active panel's input
+    const focusTarget = isTranslate ? inputEl : correctInput;
+    focusTarget.focus();
 }
 
 tabTranslate.addEventListener('click', () => switchMode('translate'));
@@ -685,3 +689,4 @@ correctSearchClear.addEventListener('click', () => {
 // Init
 // ════════════════════════════════════════════════════
 loadHistory();
+inputEl.focus();
