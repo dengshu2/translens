@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="TransLens - 个人中英翻译学习工具，记录地道美式英文表达">
-    <title>TransLens — 翻译学习</title>
+    <meta name="description" content="TransLens - 个人中英翻译与英文语法纠错工具，记录地道表达">
+    <title>TransLens — 翻译 &amp; 纠错</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,7 +17,7 @@
 </head>
 
 <body>
-    <a href="#input-chinese" class="skip-link">跳至主要内容</a>
+    <a href="#main-input" class="skip-link">跳至主要内容</a>
 
     <div class="app">
         <!-- Header -->
@@ -30,98 +30,194 @@
                 <button class="btn-header btn-theme" id="btn-theme" title="切换主题" aria-label="切换深色或浅色主题">
                     <span id="theme-icon">🌙</span>
                 </button>
-                <a href="/api/export/csv" class="btn-header" id="btn-export">
-                    <span>↓</span> Export CSV
+                <a href="/api/export/csv" class="btn-header" id="btn-export-translate">
+                    <span>↓</span> 翻译 CSV
+                </a>
+                <a href="/api/export/corrections/csv" class="btn-header" id="btn-export-correct">
+                    <span>↓</span> 纠错 CSV
                 </a>
             </div>
         </header>
 
-        <!-- Input -->
-        <section class="input-section" aria-label="翻译输入">
-            <div class="textarea-wrapper" id="textarea-wrapper">
-                <textarea class="input-textarea" id="input-chinese" placeholder="输入中文，获取地道美式英文表达..." rows="3"
-                    maxlength="500"></textarea>
-                <span class="char-count" id="char-count">0/500</span>
-            </div>
-            <div class="input-actions">
-                <span class="hint-text">Ctrl + Enter 快捷翻译</span>
-                <button class="btn-translate" id="btn-translate" disabled>
-                    <span class="btn-text">翻译</span>
-                </button>
-            </div>
-        </section>
+        <!-- Mode Tabs -->
+        <nav class="mode-tabs" aria-label="功能切换" role="tablist">
+            <button class="mode-tab active" id="tab-translate" role="tab" aria-selected="true"
+                aria-controls="panel-translate" data-mode="translate">
+                <span class="tab-icon">🌏</span>
+                中文翻译
+            </button>
+            <button class="mode-tab" id="tab-correct" role="tab" aria-selected="false" aria-controls="panel-correct"
+                data-mode="correct">
+                <span class="tab-icon">✏️</span>
+                英文纠错
+            </button>
+        </nav>
 
-        <!-- Result (hidden by default) -->
-        <section class="result-section" id="result-section" style="display: none;" aria-label="翻译结果">
-            <div class="result-card">
-                <span class="result-label">Translation</span>
-                <div class="result-english" id="result-english"></div>
-                <div class="result-chinese" id="result-chinese"></div>
-                <button class="result-copy-btn" id="result-copy-btn" title="复制" aria-label="复制翻译结果">📋</button>
-            </div>
-        </section>
+        <!-- ── Translation Panel ── -->
+        <div id="panel-translate" role="tabpanel" aria-labelledby="tab-translate">
 
-        <!-- History -->
-        <section class="history-section" aria-label="翻译历史">
-            <div class="history-header">历史记录 <span class="history-count" id="history-count"></span></div>
-
-            <div class="history-search">
-                <input type="search" class="search-input" id="search-input" placeholder="搜索翻译记录...">
-                <button class="search-clear" id="search-clear" aria-label="清除搜索">✕</button>
-            </div>
-
-            <!-- Skeleton loader -->
-            <div class="skeleton-list" id="skeleton-list">
-                <div class="skeleton-item">
-                    <div class="skeleton-line short"></div>
-                    <div class="skeleton-line long"></div>
-                    <div class="skeleton-line meta"></div>
+            <!-- Input -->
+            <section class="input-section" aria-label="翻译输入">
+                <div class="textarea-wrapper" id="textarea-wrapper">
+                    <textarea class="input-textarea" id="input-chinese" placeholder="输入中文，获取地道美式英文表达..." rows="3"
+                        maxlength="500" id="main-input"></textarea>
+                    <span class="char-count" id="char-count">0/500</span>
                 </div>
-                <div class="skeleton-item">
-                    <div class="skeleton-line short"></div>
-                    <div class="skeleton-line long"></div>
-                    <div class="skeleton-line meta"></div>
+                <div class="input-actions">
+                    <span class="hint-text">Ctrl + Enter 快捷翻译</span>
+                    <button class="btn-primary" id="btn-translate" disabled>
+                        <span class="btn-text">翻译</span>
+                    </button>
                 </div>
-                <div class="skeleton-item">
-                    <div class="skeleton-line short"></div>
-                    <div class="skeleton-line long"></div>
-                    <div class="skeleton-line meta"></div>
+            </section>
+
+            <!-- Result -->
+            <section class="result-section" id="result-section" style="display: none;" aria-label="翻译结果">
+                <div class="result-card">
+                    <span class="result-label">Translation</span>
+                    <div class="result-english" id="result-english"></div>
+                    <div class="result-chinese" id="result-chinese"></div>
+                    <button class="result-copy-btn" id="result-copy-btn" title="复制" aria-label="复制翻译结果">📋</button>
                 </div>
-            </div>
+            </section>
 
-            <!-- Initial empty state -->
-            <div class="state-empty" id="history-empty">
-                <span class="state-icon">📝</span>
-                <span class="state-title">翻译记录为空</span>
-                <span class="state-text">在上方输入中文内容，所有翻译结果会自动保存在这里</span>
-            </div>
+            <!-- History -->
+            <section class="history-section" aria-label="翻译历史">
+                <div class="history-header">历史记录 <span class="history-count" id="history-count"></span></div>
 
-            <!-- Search no results -->
-            <div class="state-empty" id="search-empty" style="display: none;">
-                <span class="state-icon">🔍</span>
-                <span class="state-title">没有找到匹配的记录</span>
-                <span class="state-text">尝试使用不同的关键词搜索</span>
-            </div>
+                <div class="history-search">
+                    <input type="search" class="search-input" id="search-input" placeholder="搜索翻译记录...">
+                    <button class="search-clear" id="search-clear" aria-label="清除搜索">✕</button>
+                </div>
 
-            <!-- Error state -->
-            <div class="state-error" id="history-error">
-                <span class="state-icon">⚠️</span>
-                <span class="state-text">加载失败，请检查网络连接</span>
-                <button class="btn-retry" id="btn-retry">重试</button>
-            </div>
+                <div class="skeleton-list" id="skeleton-list">
+                    <div class="skeleton-item">
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line long"></div>
+                        <div class="skeleton-line meta"></div>
+                    </div>
+                    <div class="skeleton-item">
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line long"></div>
+                        <div class="skeleton-line meta"></div>
+                    </div>
+                    <div class="skeleton-item">
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line long"></div>
+                        <div class="skeleton-line meta"></div>
+                    </div>
+                </div>
 
-            <ul class="history-list" id="history-list"></ul>
+                <div class="state-empty" id="history-empty">
+                    <span class="state-icon">📝</span>
+                    <span class="state-title">翻译记录为空</span>
+                    <span class="state-text">在上方输入中文内容，所有翻译结果会自动保存在这里</span>
+                </div>
 
-            <div class="load-more-wrapper" id="load-more-wrapper" style="display: none;">
-                <button class="btn-load-more" id="btn-load-more">加载更多</button>
-            </div>
-        </section>
+                <div class="state-empty" id="search-empty" style="display: none;">
+                    <span class="state-icon">🔍</span>
+                    <span class="state-title">没有找到匹配的记录</span>
+                    <span class="state-text">尝试使用不同的关键词搜索</span>
+                </div>
+
+                <div class="state-error" id="history-error">
+                    <span class="state-icon">⚠️</span>
+                    <span class="state-text">加载失败，请检查网络连接</span>
+                    <button class="btn-retry" id="btn-retry">重试</button>
+                </div>
+
+                <ul class="history-list" id="history-list"></ul>
+
+                <div class="load-more-wrapper" id="load-more-wrapper" style="display: none;">
+                    <button class="btn-load-more" id="btn-load-more">加载更多</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- ── Correction Panel ── -->
+        <div id="panel-correct" role="tabpanel" aria-labelledby="tab-correct" style="display: none;">
+
+            <!-- Input -->
+            <section class="input-section" aria-label="纠错输入">
+                <div class="textarea-wrapper" id="correct-textarea-wrapper">
+                    <textarea class="input-textarea" id="input-english" placeholder="输入需要检查的英文内容，将自动纠正语法和拼写错误..."
+                        rows="3" maxlength="1000"></textarea>
+                    <span class="char-count" id="correct-char-count">0/1000</span>
+                </div>
+                <div class="input-actions">
+                    <span class="hint-text">Ctrl + Enter 快捷纠错</span>
+                    <button class="btn-primary" id="btn-correct" disabled>
+                        <span class="btn-text">纠错</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Correction Result -->
+            <section class="result-section" id="correct-result-section" style="display: none;" aria-label="纠错结果">
+                <div class="result-card correct-result-card">
+                    <span class="result-label">Corrected</span>
+                    <div class="correct-diff" id="correct-diff"></div>
+                    <button class="result-copy-btn" id="correct-copy-btn" title="复制纠错结果" aria-label="复制纠错结果">📋</button>
+                    <div class="correct-original-row">
+                        <span class="correct-original-label">原文</span>
+                        <div class="correct-original-text" id="correct-original-text"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Correction History -->
+            <section class="history-section" aria-label="纠错历史">
+                <div class="history-header">纠错记录 <span class="history-count" id="correct-history-count"></span></div>
+
+                <div class="history-search">
+                    <input type="search" class="search-input" id="correct-search-input" placeholder="搜索纠错记录...">
+                    <button class="search-clear" id="correct-search-clear" aria-label="清除搜索">✕</button>
+                </div>
+
+                <div class="skeleton-list" id="correct-skeleton-list">
+                    <div class="skeleton-item">
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line long"></div>
+                        <div class="skeleton-line meta"></div>
+                    </div>
+                    <div class="skeleton-item">
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line long"></div>
+                        <div class="skeleton-line meta"></div>
+                    </div>
+                </div>
+
+                <div class="state-empty" id="correct-history-empty">
+                    <span class="state-icon">✏️</span>
+                    <span class="state-title">纠错记录为空</span>
+                    <span class="state-text">在上方输入英文内容，纠错结果会自动保存在这里</span>
+                </div>
+
+                <div class="state-empty" id="correct-search-empty" style="display: none;">
+                    <span class="state-icon">🔍</span>
+                    <span class="state-title">没有找到匹配的记录</span>
+                    <span class="state-text">尝试使用不同的关键词搜索</span>
+                </div>
+
+                <div class="state-error" id="correct-history-error">
+                    <span class="state-icon">⚠️</span>
+                    <span class="state-text">加载失败，请检查网络连接</span>
+                    <button class="btn-retry" id="correct-btn-retry">重试</button>
+                </div>
+
+                <ul class="history-list" id="correct-history-list"></ul>
+
+                <div class="load-more-wrapper" id="correct-load-more-wrapper" style="display: none;">
+                    <button class="btn-load-more" id="correct-btn-load-more">加载更多</button>
+                </div>
+            </section>
+        </div>
 
         <!-- Footer -->
         <footer class="footer">
-            <span>TransLens v1.0</span>
+            <span>TransLens v1.1</span>
             <span class="footer-sep">·</span>
-            <span>翻译由 OpenRouter 驱动</span>
+            <span>由 OpenRouter 驱动</span>
         </footer>
     </div>
 

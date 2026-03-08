@@ -58,7 +58,7 @@ func main() {
 	log.Printf("OpenRouter client initialized with model: %s", model)
 
 	// ── HTTP Handler ─────────────────────────────────────────────────
-	h := &handler{db: db, translator: or}
+	h := &handler{db: db, translator: or, corrector: or}
 
 	// ── Router ───────────────────────────────────────────────────────
 	r := chi.NewRouter()
@@ -90,10 +90,17 @@ func main() {
 
 		// API routes.
 		r.Route("/api", func(r chi.Router) {
+			// Translation.
 			r.Post("/translate", h.handleTranslate)
 			r.Get("/history", h.handleHistory)
 			r.Get("/export/csv", h.handleExportCSV)
 			r.Delete("/translations/{id}", h.handleDelete)
+
+			// Correction.
+			r.Post("/correct", h.handleCorrect)
+			r.Get("/corrections", h.handleCorrectionHistory)
+			r.Get("/export/corrections/csv", h.handleExportCorrectionsCSV)
+			r.Delete("/corrections/{id}", h.handleDeleteCorrection)
 		})
 
 		// Static files (frontend).

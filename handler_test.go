@@ -21,7 +21,17 @@ func (m *mockTranslator) Translate(_ context.Context, _ string) (string, error) 
 	return m.result, m.err
 }
 
-// newTestHandler creates a handler with a temp DB and mock translator.
+// mockCorrector is a test double for the Corrector interface.
+type mockCorrector struct {
+	result string
+	err    error
+}
+
+func (m *mockCorrector) CorrectEnglish(_ context.Context, _ string) (string, error) {
+	return m.result, m.err
+}
+
+// newTestHandler creates a handler with a temp DB, mock translator, and mock corrector.
 func newTestHandler(t *testing.T, translator Translator) *handler {
 	t.Helper()
 	db, err := InitDB(filepath.Join(t.TempDir(), "test.db"))
@@ -30,7 +40,27 @@ func newTestHandler(t *testing.T, translator Translator) *handler {
 	}
 	t.Cleanup(func() { db.Close() })
 
-	return &handler{db: db, translator: translator}
+	return &handler{
+		db:        db,
+		translator: translator,
+		corrector:  &mockCorrector{result: "Corrected text."},
+	}
+}
+
+// newTestHandlerWithCorrector creates a handler with a custom corrector.
+func newTestHandlerWithCorrector(t *testing.T, corrector Corrector) *handler {
+	t.Helper()
+	db, err := InitDB(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+
+	return &handler{
+		db:        db,
+		translator: &mockTranslator{result: "Hello"},
+		corrector:  corrector,
+	}
 }
 
 // ── POST /api/translate ─────────────────────────────────────
@@ -286,3 +316,153 @@ func TestHandleExportCSV_WithData(t *testing.T) {
 		t.Errorf("expected 2 CSV lines (header + 1 row), got %d", len(lines))
 	}
 }
+
+// ── POST /api/correct ────────────────────────────────────────
+
+func TestHandleCorrect_Success(t *testing.T) {
+h := newTestHandlerWithCorrector(t, &mockCorrector{result: "I went to the store."})
+body := strings.NewReader(`{"english":"I goes to the store."}`)
+req := httptest.NewRequest(http.MethodPost, "/api/correct", body)
+req.Header.Set("Content-Type", "application/json")
+rec := httptest.NewRecorder()
+h.handleCorrect(rec, req)
+if rec.Code != http.StatusOK {
+t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+}
+var resp Correction
+if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+t.Fatalf("decode response: %v", err)
+}
+if resp.Original != "I goes to the store." {
+t.Errorf("expected original='I goes to the store.', got %q", resp.Original)
+}
+if resp.Corrected != "I went to the store." {
+t.Errorf("expected corrected='I went to the store.', got %q", resp.Corrected)
+}
+if resp.ID == 0 {
+t.Error("expected non-zero ID")
+}
+}
+
+func TestHandleCorrect_EmptyInput(t *testing.T) {
+h := newTestHandlerWithCorrector(t, &mockCorrector{result: "ok"})
+body := strings.NewReader(`{"english":""}`)
+req := httptest.NewRequest(http.MethodPost, "/api/correct", body)
+req.Header.Set("Content-Type", "application/json")
+rec := httptest.NewRecorder()
+h.handleCorrect(rec, req)
+if rec.Code != http.StatusBadRequest {
+t.Errorf("expected 400 for empty input, got %d", rec.Code)
+}
+}
+
+func TestHandleCorrect_TooLong(t *testing.T) {
+h := newTestHandlerWithCorrector(t, &mockCorrector{result: "ok"})
+long := strings.Repeat("a", 1001)
+body := strings.NewReader(`{"english":"` + long + `"}`)
+req := httptest.NewRequest(http.MethodPost, "/api/correct", body)
+req.Header.Set("Content-Type", "application/json")
+rec := httptest.NewRecorder()
+h.handleCorrect(rec, req)
+if rec.Code != http.StatusBadRequest {
+t.Errorf("expected 400 for too-long input, got %d", rec.Code)
+}
+}
+
+func TestHandleCorrect_InvalidJSON(t *testing.T) {
+h := newTestHandlerWithCorrector(t, &mockCorrector{result: "ok"})
+body := strings.NewReader(`not json`)
+req := httptest.NewRequest(http.MethodPost, "/api/correct", body)
+req.Header.Set("Content-Type", "application/json")
+rec := httptest.NewRecorder()
+h.handleCorrect(rec, req)
+if rec.Code != http.StatusBadRequest {
+t.Errorf("expected 400 for invalid JSON, got %d", rec.Code)
+}
+}
+
+func TestHandleCorrect_CorrectorError(t *testing.T) {
+h := newTestHandlerWithCorrector(t, &mockCorrector{err: io.ErrUnexpectedEOF})
+body := strings.NewReader(`{"english":"I goes to shop."}`)
+req := httptest.NewRequest(http.MethodPost, "/api/correct", body)
+req.Header.Set("Content-Type", "application/json")
+rec := httptest.NewRecorder()
+h.handleCorrect(rec, req)
+if rec.Code != http.StatusInternalServerError {
+t.Errorf("expected 500, got %d", rec.Code)
+}
+var errResp map[string]string
+json.NewDecoder(rec.Body).Decode(&errResp)
+if strings.Contains(errResp["error"], "EOF") {
+t.Error("error response should not leak internal error details")
+}
+}
+
+// ── GET /api/corrections ─────────────────────────────────────
+
+func TestHandleCorrectionHistory_Empty(t *testing.T) {
+h := newTestHandlerWithCorrector(t, &mockCorrector{result: "ok"})
+req := httptest.NewRequest(http.MethodGet, "/api/corrections", nil)
+rec := httptest.NewRecorder()
+h.handleCorrectionHistory(rec, req)
+if rec.Code != http.StatusOK {
+t.Fatalf("expected 200, got %d", rec.Code)
+}
+var resp struct {
+Corrections []Correction `json:"corrections"`
+Total       int          `json:"total"`
+HasMore     bool         `json:"has_more"`
+}
+if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+t.Fatalf("decode: %v", err)
+}
+if resp.Corrections == nil {
+t.Error("expected empty array, got null")
+}
+if len(resp.Corrections) != 0 {
+t.Errorf("expected 0 corrections, got %d", len(resp.Corrections))
+}
+if resp.Total != 0 {
+t.Errorf("expected total=0, got %d", resp.Total)
+}
+if resp.HasMore {
+t.Error("expected has_more=false for empty result")
+}
+}
+
+func TestHandleCorrectionHistory_WithData(t *testing.T) {
+h := newTestHandlerWithCorrector(t, &mockCorrector{result: "Corrected."})
+for _, eng := range []string{"I goes.", "She runned.", "They buyed."} {
+body := strings.NewReader(`{"english":"` + eng + `"}`)
+req := httptest.NewRequest(http.MethodPost, "/api/correct", body)
+req.Header.Set("Content-Type", "application/json")
+rec := httptest.NewRecorder()
+h.handleCorrect(rec, req)
+}
+req := httptest.NewRequest(http.MethodGet, "/api/corrections", nil)
+rec := httptest.NewRecorder()
+h.handleCorrectionHistory(rec, req)
+var resp struct {
+Corrections []Correction `json:"corrections"`
+Total       int          `json:"total"`
+}
+json.NewDecoder(rec.Body).Decode(&resp)
+if len(resp.Corrections) != 3 {
+t.Fatalf("expected 3 corrections, got %d", len(resp.Corrections))
+}
+if resp.Total != 3 {
+t.Errorf("expected total=3, got %d", resp.Total)
+}
+found := make(map[string]bool)
+for _, c := range resp.Corrections {
+found[c.Original] = true
+}
+for _, orig := range []string{"I goes.", "She runned.", "They buyed."} {
+if !found[orig] {
+t.Errorf("missing correction for %q", orig)
+}
+}
+}
+
+// ── POST /api/correct ────────────────────────────────────────
+

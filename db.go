@@ -18,6 +18,14 @@ type Translation struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// Correction represents a single English grammar-correction record.
+type Correction struct {
+	ID        int64     `json:"id"`
+	Original  string    `json:"original"`
+	Corrected string    `json:"corrected"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // InitDB opens (or creates) the SQLite database at dbPath,
 // creates the translations table if it doesn't exist, and returns the *sql.DB handle.
 func InitDB(dbPath string) (*sql.DB, error) {
@@ -45,7 +53,7 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		}
 	}
 
-	// Create table and index.
+	// Create tables and indexes.
 	schema := `
 	CREATE TABLE IF NOT EXISTS translations (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,6 +63,15 @@ func InitDB(dbPath string) (*sql.DB, error) {
 	);
 	CREATE INDEX IF NOT EXISTS idx_translations_created_at
 		ON translations(created_at DESC);
+
+	CREATE TABLE IF NOT EXISTS corrections (
+		id         INTEGER PRIMARY KEY AUTOINCREMENT,
+		original   TEXT NOT NULL,
+		corrected  TEXT NOT NULL,
+		created_at DATETIME DEFAULT (datetime('now'))
+	);
+	CREATE INDEX IF NOT EXISTS idx_corrections_created_at
+		ON corrections(created_at DESC);
 	`
 	if _, err := db.Exec(schema); err != nil {
 		db.Close()
@@ -165,6 +182,117 @@ func DeleteTranslation(db *sql.DB, id int64) (bool, error) {
 	result, err := db.Exec("DELETE FROM translations WHERE id = ?", id)
 	if err != nil {
 		return false, fmt.Errorf("delete translation: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("rows affected: %w", err)
+	}
+	return affected > 0, nil
+}
+
+// ── Corrections ──────────────────────────────────────────────────────────────
+
+// InsertCorrection stores a new correction record and returns the complete record.
+func InsertCorrection(db *sql.DB, original, corrected string) (Correction, error) {
+	result, err := db.Exec(
+		"INSERT INTO corrections (original, corrected) VALUES (?, ?)",
+		original, corrected,
+	)
+	if err != nil {
+		return Correction{}, fmt.Errorf("insert correction: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return Correction{}, fmt.Errorf("get last insert id: %w", err)
+	}
+
+	var c Correction
+	err = db.QueryRow(
+		"SELECT id, original, corrected, created_at FROM corrections WHERE id = ?", id,
+	).Scan(&c.ID, &c.Original, &c.Corrected, &c.CreatedAt)
+	if err != nil {
+		return Correction{}, fmt.Errorf("read back correction: %w", err)
+	}
+
+	return c, nil
+}
+
+// GetCorrections returns a page of corrections ordered by created_at DESC.
+// If search is non-empty, it filters by original or corrected text.
+func GetCorrections(db *sql.DB, limit, offset int, search string) ([]Correction, int, error) {
+	var (
+		total int
+		rows  *sql.Rows
+		err   error
+	)
+
+	if search != "" {
+		pattern := "%" + search + "%"
+		err = db.QueryRow(
+			"SELECT COUNT(*) FROM corrections WHERE original LIKE ? OR corrected LIKE ?",
+			pattern, pattern,
+		).Scan(&total)
+		if err != nil {
+			return nil, 0, fmt.Errorf("count corrections: %w", err)
+		}
+		rows, err = db.Query(
+			"SELECT id, original, corrected, created_at FROM corrections WHERE original LIKE ? OR corrected LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+			pattern, pattern, limit, offset,
+		)
+	} else {
+		err = db.QueryRow("SELECT COUNT(*) FROM corrections").Scan(&total)
+		if err != nil {
+			return nil, 0, fmt.Errorf("count corrections: %w", err)
+		}
+		rows, err = db.Query(
+			"SELECT id, original, corrected, created_at FROM corrections ORDER BY created_at DESC LIMIT ? OFFSET ?",
+			limit, offset,
+		)
+	}
+	if err != nil {
+		return nil, 0, fmt.Errorf("query corrections: %w", err)
+	}
+	defer rows.Close()
+
+	var corrections []Correction
+	for rows.Next() {
+		var c Correction
+		if err := rows.Scan(&c.ID, &c.Original, &c.Corrected, &c.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan correction: %w", err)
+		}
+		corrections = append(corrections, c)
+	}
+	return corrections, total, rows.Err()
+}
+
+// GetAllCorrections returns every correction ordered by created_at DESC.
+// Used for CSV export.
+func GetAllCorrections(db *sql.DB) ([]Correction, error) {
+	rows, err := db.Query(
+		"SELECT id, original, corrected, created_at FROM corrections ORDER BY created_at DESC",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query corrections: %w", err)
+	}
+	defer rows.Close()
+
+	var corrections []Correction
+	for rows.Next() {
+		var c Correction
+		if err := rows.Scan(&c.ID, &c.Original, &c.Corrected, &c.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan correction: %w", err)
+		}
+		corrections = append(corrections, c)
+	}
+	return corrections, rows.Err()
+}
+
+// DeleteCorrection removes a correction by ID. Returns true if a row was deleted.
+func DeleteCorrection(db *sql.DB, id int64) (bool, error) {
+	result, err := db.Exec("DELETE FROM corrections WHERE id = ?", id)
+	if err != nil {
+		return false, fmt.Errorf("delete correction: %w", err)
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
