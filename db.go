@@ -7,8 +7,16 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
 )
+
+// User represents an authenticated user account.
+type User struct {
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
+}
 
 // Translation represents a single translation record.
 type Translation struct {
@@ -55,6 +63,13 @@ func InitDB(dbPath string) (*sql.DB, error) {
 
 	// Create tables and indexes.
 	schema := `
+	CREATE TABLE IF NOT EXISTS users (
+		id            TEXT PRIMARY KEY,
+		email         TEXT UNIQUE NOT NULL,
+		password_hash TEXT NOT NULL,
+		created_at    DATETIME DEFAULT (datetime('now'))
+	);
+
 	CREATE TABLE IF NOT EXISTS translations (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,
 		chinese    TEXT NOT NULL,
@@ -80,6 +95,39 @@ func InitDB(dbPath string) (*sql.DB, error) {
 
 	return db, nil
 }
+
+// ── User queries ──────────────────────────────────────────────────────────────
+
+func createUser(db *sql.DB, email, passwordHash string) (User, error) {
+	id := uuid.New().String()
+	now := time.Now().UTC()
+	_, err := db.Exec(
+		`INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)`,
+		id, email, passwordHash, now,
+	)
+	if err != nil {
+		return User{}, fmt.Errorf("create user: %w", err)
+	}
+	return User{ID: id, Email: email, CreatedAt: now}, nil
+}
+
+func getUserByEmail(db *sql.DB, email string) (User, string, error) {
+	var u User
+	var hash string
+	err := db.QueryRow(
+		`SELECT id, email, password_hash, created_at FROM users WHERE email = ?`,
+		email,
+	).Scan(&u.ID, &u.Email, &hash, &u.CreatedAt)
+	if err == sql.ErrNoRows {
+		return User{}, "", nil
+	}
+	if err != nil {
+		return User{}, "", fmt.Errorf("get user by email: %w", err)
+	}
+	return u, hash, nil
+}
+
+// ── Translation queries ───────────────────────────────────────────────────────
 
 // InsertTranslation stores a new translation and returns the complete record.
 func InsertTranslation(db *sql.DB, chinese, english string) (Translation, error) {

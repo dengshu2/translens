@@ -5,13 +5,13 @@
 ## ✨ 功能特性
 
 - **中译英翻译** — 基于 [OpenRouter](https://openrouter.ai/) 接入 AI 模型，翻译为地道、口语化的美式英文
-- **翻译历史** — 自动保存每条翻译记录，支持回顾与重新翻译
-- **搜索与分页** — 支持关键词搜索（中/英），分页加载历史记录
-- **删除记录** — 支持删除单条翻译记录
+- **英文纠错** — 输入英文段落，AI 自动纠正语法和拼写错误，逐词 diff 高亮显示修改
+- **翻译/纠错历史** — 自动保存每条记录，支持回顾、搜索、分页加载
+- **删除记录** — 支持删除单条翻译或纠错记录
 - **CSV 导出** — 一键导出全部历史记录为 CSV 文件，兼容 Excel
-- **极简界面** — Notion 风格 UI，响应式设计，支持桌面端和移动端
-- **快捷操作** — `Ctrl + Enter` 快捷翻译，一键复制结果
-- **访问控制** — HTTP Basic Auth 保护，防止未授权访问
+- **极简界面** — Notion 风格 UI，响应式设计，明/暗双主题
+- **快捷操作** — `Ctrl + Enter` 快捷翻译/纠错，一键复制结果
+- **邮箱认证** — Email + 密码注册登录，JWT 鉴权，支持可配置的注册开关
 - **健康检查** — `/health` 端点支持 Docker 容器健康检测
 
 ## 🏗️ 技术栈
@@ -19,9 +19,10 @@
 | 层级 | 技术 |
 |---|---|
 | 后端 | Go 1.24 + [Chi](https://github.com/go-chi/chi) Router |
+| 认证 | Email/Password + JWT（bcrypt 哈希） |
 | AI | [OpenRouter API](https://openrouter.ai/)（兼容 OpenAI 接口，支持多种模型） |
 | 数据库 | SQLite ([modernc.org/sqlite](https://modernc.org/sqlite)，纯 Go 实现，无需 CGO) |
-| 前端 | 原生 HTML/CSS/JS 单文件，Notion 风格设计 |
+| 前端 | 原生 HTML/CSS/JS，Notion 风格设计 |
 | 部署 | Docker + Docker Compose |
 
 ## 📁 项目结构
@@ -29,11 +30,17 @@
 ```
 translens/
 ├── main.go              # 入口：配置加载、路由、服务启停
-├── handler.go           # HTTP 处理器：翻译、历史、导出
+├── auth.go              # 认证服务：注册、登录、JWT 签发/验证
+├── handler.go           # HTTP 处理器：翻译、纠错、历史、导出
+├── handler_auth.go      # 认证处理器：注册、登录、配置端点
+├── middleware.go         # 中间件：CORS、JWT 鉴权
 ├── openrouter.go        # OpenRouter API 客户端封装
 ├── db.go                # SQLite 数据库初始化与 CRUD
 ├── static/
-│   └── index.html       # 前端单页应用
+│   ├── index.html       # 主页面（翻译 + 纠错）
+│   ├── login.html       # 登录/注册页面
+│   ├── app.js           # 前端逻辑
+│   └── style.css        # 样式（明/暗双主题）
 ├── data/                # SQLite 数据库文件（自动创建）
 ├── Dockerfile           # 多阶段构建
 ├── docker-compose.yml   # 容器编排
@@ -57,22 +64,20 @@ git clone <repo-url> && cd translens
 
 # 2. 配置环境变量
 cp .env.example .env
-# 编辑 .env，填入你的 API Key
+# 编辑 .env，填入 API Key 和 JWT Secret
 
 # 3. 启动
 go run .
 ```
 
-程序会自动加载 `.env` 文件（通过 [godotenv](https://github.com/joho/godotenv)），无需手动 `source`。
-
-浏览器访问：http://localhost:8080
+浏览器访问：http://localhost:8080/login — 首次使用请注册账号。
 
 ### Docker 部署
 
 ```bash
 # 1. 配置环境变量
 cp .env.example .env
-# 编辑 .env，填入你的 API Key
+# 编辑 .env，填入 API Key 和 JWT Secret
 
 # 2. 启动容器
 docker compose up -d
@@ -81,79 +86,110 @@ docker compose up -d
 docker compose logs -f
 ```
 
-浏览器访问：http://localhost:7070
+浏览器访问：http://localhost:7070/login
 
 ## ⚙️ 环境变量
 
 | 变量 | 必填 | 默认值 | 说明 |
 |---|---|---|---|
-| `OPENROUTER_API_KEY` | ✅ | — | OpenRouter API 密钥 |
-| `OPENROUTER_MODEL` | — | `google/gemini-2.5-flash-preview` | 模型名称（支持 OpenRouter 上所有模型） |
-| `AUTH_USERNAME` | — | —（不设则跳过认证） | Basic Auth 用户名 |
-| `AUTH_PASSWORD` | — | —（不设则跳过认证） | Basic Auth 密码 |
+| `OPENROUTER_API_KEY` | 是 | — | OpenRouter API 密钥 |
+| `OPENROUTER_MODEL` | — | `google/gemini-2.5-flash-preview` | 模型名称 |
+| `JWT_SECRET` | 是 | — | JWT 签名密钥，建议 `openssl rand -hex 32` 生成 |
+| `ENABLE_REGISTRATION` | — | `true` | 设为 `false` 关闭注册入口 |
 | `PORT` | — | `8080` | 服务监听端口 |
 | `DB_PATH` | — | `./data/translations.db` | SQLite 数据库文件路径 |
 
-> **Note:** `AUTH_USERNAME` 和 `AUTH_PASSWORD` 需同时设置才会启用认证。若未设置，所有请求将无需认证即可访问。
+> 首次部署时保持 `ENABLE_REGISTRATION=true`，注册完管理员账号后可改为 `false` 并重启。
 
 ## 📡 API 接口
 
-### `POST /api/translate`
+所有 `/api/*` 端点需要在请求头中携带 JWT：
 
-翻译中文为英文。
+```
+Authorization: Bearer <token>
+```
+
+### 认证
+
+#### `POST /auth/register`
+
+注册新用户（需 `ENABLE_REGISTRATION=true`）。
 
 ```bash
-curl -u user:pass -X POST http://localhost:8080/api/translate \
+curl -X POST http://localhost:8080/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "you@example.com", "password": "your-password"}'
+```
+
+#### `POST /auth/login`
+
+登录获取 JWT。
+
+```bash
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "you@example.com", "password": "your-password"}'
+```
+
+#### `GET /api/config`
+
+获取公开配置（无需认证）。
+
+```json
+{"registration_enabled": true}
+```
+
+### 翻译
+
+#### `POST /api/translate`
+
+```bash
+curl -X POST http://localhost:8080/api/translate \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"chinese": "今天天气真好"}'
 ```
 
-```json
-{
-  "id": 1,
-  "chinese": "今天天气真好",
-  "english": "The weather's really nice today.",
-  "created_at": "2026-03-03T11:30:00Z"
-}
-```
+#### `GET /api/history?limit=20&offset=0&q=hello`
 
-### `GET /api/history`
+获取翻译历史（分页 + 搜索）。
 
-获取翻译历史（支持分页和搜索）。
+#### `DELETE /api/translations/{id}`
 
-| 参数 | 类型 | 默认值 | 说明 |
-|---|---|---|---|
-| `limit` | int | 20 | 每页条数（最大 100） |
-| `offset` | int | 0 | 偏移量 |
-| `q` | string | — | 搜索关键词（匹配中文或英文） |
+删除指定翻译记录。
+
+#### `GET /api/export/csv`
+
+导出全部翻译记录为 CSV。
+
+### 纠错
+
+#### `POST /api/correct`
 
 ```bash
-curl -u user:pass 'http://localhost:8080/api/history?limit=10&offset=0&q=hello'
+curl -X POST http://localhost:8080/api/correct \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"english": "I goes to the store yesterday."}'
 ```
 
-### `DELETE /api/translations/{id}`
+#### `GET /api/corrections?limit=20&offset=0&q=went`
 
-删除指定 ID 的翻译记录。
+获取纠错历史。
 
-```bash
-curl -u user:pass -X DELETE http://localhost:8080/api/translations/1
-```
+#### `DELETE /api/corrections/{id}`
 
-### `GET /api/export/csv`
+删除指定纠错记录。
 
-导出全部翻译记录为 CSV 文件。
+#### `GET /api/export/corrections/csv`
 
-```bash
-curl -u user:pass -O http://localhost:8080/api/export/csv
-```
+导出全部纠错记录为 CSV。
 
-### `GET /health`
+### 健康检查
 
-健康检查端点（无需认证）。
+#### `GET /health`
 
-```bash
-curl http://localhost:8080/health
-```
+无需认证，供 Docker/负载均衡器探测。
 
 ## 🐳 Docker 说明
 

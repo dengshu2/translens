@@ -8,8 +8,8 @@ services:
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-google/gemini-2.5-flash-preview}
-      - AUTH_USERNAME=${AUTH_USERNAME}
-      - AUTH_PASSWORD=${AUTH_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - ENABLE_REGISTRATION=${ENABLE_REGISTRATION:-true}
       - PORT=8080
       - DB_PATH=/app/data/translations.db
     volumes:

@@ -1,4 +1,83 @@
 // ════════════════════════════════════════════════════
+// Auth Guard
+// ════════════════════════════════════════════════════
+const TOKEN_KEY = 'tl_token';
+
+function getToken() {
+    return localStorage.getItem(TOKEN_KEY);
+}
+
+function clearTokenAndRedirect() {
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.replace('/login');
+}
+
+// If no token, redirect to login page immediately.
+if (!getToken()) {
+    clearTokenAndRedirect();
+}
+
+/**
+ * Wrapper around fetch that adds the Authorization header
+ * and handles 401 responses by redirecting to login.
+ */
+async function authFetch(url, options = {}) {
+    const token = getToken();
+    const res = await fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(options.headers || {}),
+        },
+    });
+    if (res.status === 401) {
+        clearTokenAndRedirect();
+        throw new Error('Session expired');
+    }
+    return res;
+}
+
+// Logout handler
+const btnLogout = document.getElementById('btn-logout');
+if (btnLogout) {
+    btnLogout.addEventListener('click', () => {
+        clearTokenAndRedirect();
+    });
+}
+
+// Authenticated CSV export
+async function downloadCSV(url, filename) {
+    try {
+        const res = await authFetch(url);
+        if (!res.ok) throw new Error('Export failed');
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    } catch (err) {
+        if (typeof showToast === 'function') showToast(err.message, 'error');
+    }
+}
+
+const btnExportTranslate = document.getElementById('btn-export-translate');
+const btnExportCorrect = document.getElementById('btn-export-correct');
+if (btnExportTranslate) {
+    btnExportTranslate.addEventListener('click', () => {
+        const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        downloadCSV('/api/export/csv', `translations_${d}.csv`);
+    });
+}
+if (btnExportCorrect) {
+    btnExportCorrect.addEventListener('click', () => {
+        const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        downloadCSV('/api/export/corrections/csv', `corrections_${d}.csv`);
+    });
+}
+
+// ════════════════════════════════════════════════════
 // Theme
 // ════════════════════════════════════════════════════
 const btnTheme = document.getElementById('btn-theme');
@@ -251,9 +330,8 @@ async function doTranslate(chinese) {
     setTranslateLoading(true);
 
     try {
-        const res = await fetch('/api/translate', {
+        const res = await authFetch('/api/translate', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chinese: text }),
         });
         const data = await res.json();
@@ -335,7 +413,7 @@ historyList.addEventListener('click', (e) => {
 async function deleteTranslation(id, btnEl) {
     if (!confirm('确定要删除这条记录吗？')) return;
     try {
-        const res = await fetch(`/api/translations/${id}`, { method: 'DELETE' });
+        const res = await authFetch(`/api/translations/${id}`, { method: 'DELETE' });
         if (!res.ok) {
             const data = await res.json();
             throw new Error(data.error || '删除失败');
@@ -371,7 +449,7 @@ async function loadHistory(append) {
 
     try {
         const q = searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : '';
-        const res = await fetch(`/api/history?limit=${PAGE_SIZE}&offset=${historyOffset}${q}`);
+        const res = await authFetch(`/api/history?limit=${PAGE_SIZE}&offset=${historyOffset}${q}`);
         const data = await res.json();
         historyTotal = data.total || 0;
         hideSkeleton();
@@ -496,9 +574,8 @@ async function doCorrect() {
     setCorrectLoading(true);
 
     try {
-        const res = await fetch('/api/correct', {
+        const res = await authFetch('/api/correct', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ english: text }),
         });
         const data = await res.json();
@@ -586,7 +663,7 @@ correctHistoryList.addEventListener('click', (e) => {
 async function deleteCorrection(id, btnEl) {
     if (!confirm('确定要删除这条记录吗？')) return;
     try {
-        const res = await fetch(`/api/corrections/${id}`, { method: 'DELETE' });
+        const res = await authFetch(`/api/corrections/${id}`, { method: 'DELETE' });
         if (!res.ok) {
             const data = await res.json();
             throw new Error(data.error || '删除失败');
@@ -622,7 +699,7 @@ async function loadCorrectionHistory(append) {
 
     try {
         const q = correctSearch ? `&q=${encodeURIComponent(correctSearch)}` : '';
-        const res = await fetch(`/api/corrections?limit=${PAGE_SIZE}&offset=${correctHistoryOffset}${q}`);
+        const res = await authFetch(`/api/corrections?limit=${PAGE_SIZE}&offset=${correctHistoryOffset}${q}`);
         const data = await res.json();
         correctHistoryTotal = data.total || 0;
         hideCorrectSkeleton();

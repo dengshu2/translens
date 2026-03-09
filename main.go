@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -39,8 +40,15 @@ func main() {
 		dbPath = "./data/translations.db"
 	}
 
-	authUser := os.Getenv("AUTH_USERNAME")
-	authPass := os.Getenv("AUTH_PASSWORD")
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET environment variable is required")
+	}
+
+	enableReg := true
+	if v := os.Getenv("ENABLE_REGISTRATION"); v != "" {
+		enableReg = strings.EqualFold(v, "true") || v == "1"
+	}
 
 	// ── Database ─────────────────────────────────────────────────────
 	db, err := InitDB(dbPath)
@@ -57,8 +65,19 @@ func main() {
 	}
 	log.Printf("OpenRouter client initialized with model: %s", model)
 
+	// ── Auth Service ─────────────────────────────────────────────────
+	auth := NewAuthService(db, jwtSecret)
+
 	// ── HTTP Handler ─────────────────────────────────────────────────
-	h := &handler{db: db, translator: or, corrector: or}
+	h := &handler{
+		db:                  db,
+		auth:                auth,
+		translator:          or,
+		corrector:           or,
+		registrationEnabled: enableReg,
+	}
+
+	log.Printf("Registration enabled: %v", enableReg)
 
 	// ── Router ───────────────────────────────────────────────────────
 	r := chi.NewRouter()
@@ -79,34 +98,36 @@ func main() {
 		w.Write([]byte("ok"))
 	})
 
-	// Authenticated routes.
-	r.Group(func(r chi.Router) {
-		if authUser != "" && authPass != "" {
-			r.Use(basicAuth(authUser, authPass))
-			log.Println("Basic Auth enabled")
-		} else {
-			log.Println("WARNING: Basic Auth disabled (AUTH_USERNAME/AUTH_PASSWORD not set)")
-		}
+	// Public auth routes.
+	r.Post("/auth/register", h.handleRegister)
+	r.Post("/auth/login", h.handleLogin)
+	r.Get("/api/config", h.handleConfig)
 
-		// API routes.
-		r.Route("/api", func(r chi.Router) {
-			// Translation.
-			r.Post("/translate", h.handleTranslate)
-			r.Get("/history", h.handleHistory)
-			r.Get("/export/csv", h.handleExportCSV)
-			r.Delete("/translations/{id}", h.handleDelete)
-
-			// Correction.
-			r.Post("/correct", h.handleCorrect)
-			r.Get("/corrections", h.handleCorrectionHistory)
-			r.Get("/export/corrections/csv", h.handleExportCorrectionsCSV)
-			r.Delete("/corrections/{id}", h.handleDeleteCorrection)
-		})
-
-		// Static files (frontend).
-		fileServer := http.FileServer(http.Dir("static"))
-		r.Handle("/*", fileServer)
+	// Login page.
+	r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/login.html")
 	})
+
+	// Authenticated API routes.
+	r.Group(func(r chi.Router) {
+		r.Use(jwtMiddleware(auth))
+
+		// Translation.
+		r.Post("/api/translate", h.handleTranslate)
+		r.Get("/api/history", h.handleHistory)
+		r.Get("/api/export/csv", h.handleExportCSV)
+		r.Delete("/api/translations/{id}", h.handleDelete)
+
+		// Correction.
+		r.Post("/api/correct", h.handleCorrect)
+		r.Get("/api/corrections", h.handleCorrectionHistory)
+		r.Get("/api/export/corrections/csv", h.handleExportCorrectionsCSV)
+		r.Delete("/api/corrections/{id}", h.handleDeleteCorrection)
+	})
+
+	// Static files (frontend) — unauthenticated so login.html can load assets.
+	fileServer := http.FileServer(http.Dir("static"))
+	r.Handle("/*", fileServer)
 
 	// ── Server ───────────────────────────────────────────────────────
 	srv := &http.Server{
@@ -140,5 +161,3 @@ func main() {
 
 	log.Println("Server stopped gracefully")
 }
-
-

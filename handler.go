@@ -28,9 +28,11 @@ type Corrector interface {
 
 // handler holds shared dependencies for HTTP handlers.
 type handler struct {
-	db        *sql.DB
-	translator Translator
-	corrector  Corrector
+	db                  *sql.DB
+	auth                *AuthService
+	translator          Translator
+	corrector           Corrector
+	registrationEnabled bool
 }
 
 // respondJSON writes a JSON response with the given status code.

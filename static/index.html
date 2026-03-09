@@ -13,7 +13,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="/style.css?v=1.1.1">
+    <link rel="stylesheet" href="/style.css?v=2.2.0">
 </head>
 
 <body>
@@ -30,12 +30,15 @@
                 <button class="btn-header btn-theme" id="btn-theme" title="切换主题" aria-label="切换深色或浅色主题">
                     <span id="theme-icon">🌙</span>
                 </button>
-                <a href="/api/export/csv" class="btn-header" id="btn-export-translate">
-                    <span>↓</span> 翻译 CSV
-                </a>
-                <a href="/api/export/corrections/csv" class="btn-header" id="btn-export-correct">
-                    <span>↓</span> 纠错 CSV
-                </a>
+                <button class="btn-header btn-logout" id="btn-logout" title="退出登录" aria-label="退出登录">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    <span class="btn-label">退出</span>
+                </button>
             </div>
         </header>
 
@@ -83,7 +86,18 @@
 
             <!-- History -->
             <section class="history-section" aria-label="翻译历史">
-                <div class="history-header">历史记录 <span class="history-count" id="history-count"></span></div>
+                <div class="history-header">
+                    <span>历史记录 <span class="history-count" id="history-count"></span></span>
+                    <button class="btn-export" id="btn-export-translate" title="导出翻译 CSV">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        导出 CSV
+                    </button>
+                </div>
 
                 <div class="history-search">
                     <input type="search" class="search-input" id="search-input" placeholder="搜索翻译记录...">
@@ -167,7 +181,18 @@
 
             <!-- Correction History -->
             <section class="history-section" aria-label="纠错历史">
-                <div class="history-header">纠错记录 <span class="history-count" id="correct-history-count"></span></div>
+                <div class="history-header">
+                    <span>纠错记录 <span class="history-count" id="correct-history-count"></span></span>
+                    <button class="btn-export" id="btn-export-correct" title="导出纠错 CSV">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        导出 CSV
+                    </button>
+                </div>
 
                 <div class="history-search">
                     <input type="search" class="search-input" id="correct-search-input" placeholder="搜索纠错记录...">
@@ -224,7 +249,7 @@
     <!-- Toast container -->
     <div class="toast-container" id="toast-container"></div>
 
-    <script src="/app.js?v=1.1.1"></script>
+    <script src="/app.js?v=2.2.0"></script>
 </body>
 
 </html>

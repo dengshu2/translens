@@ -48,6 +48,18 @@
 
     --z-toast: 50;
     --z-skip: 100;
+
+    /* Login page aliases */
+    --bg: var(--color-bg);
+    --surface: var(--color-bg-secondary);
+    --border: var(--color-border);
+    --text: var(--color-text);
+    --text-muted: var(--color-text-secondary);
+    --accent: var(--color-accent);
+    --input-bg: var(--color-bg);
+    --error-bg: var(--color-danger-bg);
+    --error-text: var(--color-danger);
+    --shadow-color: rgba(55, 53, 47, 0.06);
 }
 
 /* ── Dark Mode (auto) ────────────────────────────── */
@@ -70,6 +82,7 @@
         --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.18);
         --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.22);
         --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3);
+        --shadow-color: rgba(0, 0, 0, 0.22);
     }
 }
 
@@ -92,6 +105,7 @@
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.18);
     --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.22);
     --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3);
+    --shadow-color: rgba(0, 0, 0, 0.22);
 }
 
 body {
@@ -209,6 +223,16 @@ textarea:focus-visible {
     font-size: 16px;
     line-height: 1;
     border: none;
+}
+
+.btn-logout {
+    color: var(--color-text-light);
+}
+
+.btn-logout:hover {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+    background: var(--color-danger-bg);
 }
 
 /* ── Input Section ───────────────────────────────── */
@@ -410,12 +434,42 @@ textarea:focus-visible {
 }
 
 .history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     font-size: var(--font-size-sm);
     font-weight: 600;
     color: var(--color-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     margin-bottom: var(--space-lg);
+}
+
+.btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    font-family: var(--font-family);
+    color: var(--color-text-light);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: normal;
+    transition: background var(--transition), color var(--transition), transform 0.1s ease;
+}
+
+.btn-export:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-secondary);
+}
+
+.btn-export:active {
+    transform: scale(0.97);
 }
 
 .history-count {
@@ -846,7 +900,16 @@ textarea:focus-visible {
     }
 
     .btn-header {
-        padding: 8px 12px;
+        padding: 8px;
+        gap: 0;
+    }
+
+    .btn-label {
+        display: none;
+    }
+
+    .header-actions {
+        gap: 4px;
     }
 
     .search-input {

@@ -1,8 +1,9 @@
 package main
 
 import (
-	"crypto/subtle"
+	"context"
 	"net/http"
+	"strings"
 )
 
 // allowedOrigin is the production origin for CORS.
@@ -33,19 +34,29 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// basicAuth returns a middleware that enforces HTTP Basic Authentication.
-func basicAuth(username, password string) func(http.Handler) http.Handler {
+// jwtMiddleware extracts and validates the Bearer token, injecting claims into the context.
+func jwtMiddleware(auth *AuthService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			u, p, ok := r.BasicAuth()
-			if !ok ||
-				subtle.ConstantTimeCompare([]byte(u), []byte(username)) != 1 ||
-				subtle.ConstantTimeCompare([]byte(p), []byte(password)) != 1 {
-				w.Header().Set("WWW-Authenticate", `Basic realm="TransLens"`)
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			authHeader := r.Header.Get("Authorization")
+			if !strings.HasPrefix(authHeader, "Bearer ") {
+				respondError(w, http.StatusUnauthorized, "missing or invalid authorization header")
 				return
 			}
-			next.ServeHTTP(w, r)
+			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+			claims, err := auth.ValidateToken(tokenStr)
+			if err != nil {
+				respondError(w, http.StatusUnauthorized, "invalid or expired token")
+				return
+			}
+			ctx := context.WithValue(r.Context(), contextKeyUser, claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// claimsFromCtx extracts JWT claims from the request context.
+func claimsFromCtx(r *http.Request) *Claims {
+	c, _ := r.Context().Value(contextKeyUser).(*Claims)
+	return c
 }
