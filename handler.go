@@ -76,8 +76,9 @@ func (h *handler) handleTranslate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Save to database.
-	t, err := InsertTranslation(h.db, req.Chinese, english)
+	// Save to database, scoped to the authenticated user.
+	userID := claimsFromCtx(r).UserID
+	t, err := InsertTranslation(h.db, userID, req.Chinese, english)
 	if err != nil {
 		log.Printf("Database error: %v", err)
 		respondError(w, http.StatusInternalServerError, "保存翻译记录失败")
@@ -104,7 +105,7 @@ func (h *handler) handleHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	translations, total, err := GetTranslations(h.db, limit, offset, search)
+	translations, total, err := GetTranslations(h.db, claimsFromCtx(r).UserID, limit, offset, search)
 	if err != nil {
 		log.Printf("Query error: %v", err)
 		respondError(w, http.StatusInternalServerError, "获取历史记录失败")
@@ -125,7 +126,7 @@ func (h *handler) handleHistory(w http.ResponseWriter, r *http.Request) {
 
 // handleExportCSV handles GET /api/export/csv
 func (h *handler) handleExportCSV(w http.ResponseWriter, r *http.Request) {
-	translations, err := GetAllTranslations(h.db)
+	translations, err := GetAllTranslations(h.db, claimsFromCtx(r).UserID)
 	if err != nil {
 		log.Printf("Export error: %v", err)
 		respondError(w, http.StatusInternalServerError, "导出失败")
@@ -166,7 +167,7 @@ func (h *handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deleted, err := DeleteTranslation(h.db, id)
+	deleted, err := DeleteTranslation(h.db, claimsFromCtx(r).UserID, id)
 	if err != nil {
 		log.Printf("Delete error: %v", err)
 		respondError(w, http.StatusInternalServerError, "删除失败")
@@ -207,7 +208,9 @@ func (h *handler) handleCorrect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := InsertCorrection(h.db, req.English, corrected)
+	// Save to database, scoped to the authenticated user.
+	userID := claimsFromCtx(r).UserID
+	c, err := InsertCorrection(h.db, userID, req.English, corrected)
 	if err != nil {
 		log.Printf("Database error: %v", err)
 		respondError(w, http.StatusInternalServerError, "保存纠错记录失败")
@@ -234,7 +237,7 @@ func (h *handler) handleCorrectionHistory(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	corrections, total, err := GetCorrections(h.db, limit, offset, search)
+	corrections, total, err := GetCorrections(h.db, claimsFromCtx(r).UserID, limit, offset, search)
 	if err != nil {
 		log.Printf("Query error: %v", err)
 		respondError(w, http.StatusInternalServerError, "获取历史记录失败")
@@ -254,7 +257,7 @@ func (h *handler) handleCorrectionHistory(w http.ResponseWriter, r *http.Request
 
 // handleExportCorrectionsCSV handles GET /api/export/corrections/csv
 func (h *handler) handleExportCorrectionsCSV(w http.ResponseWriter, r *http.Request) {
-	corrections, err := GetAllCorrections(h.db)
+	corrections, err := GetAllCorrections(h.db, claimsFromCtx(r).UserID)
 	if err != nil {
 		log.Printf("Export error: %v", err)
 		respondError(w, http.StatusInternalServerError, "导出失败")
@@ -291,7 +294,7 @@ func (h *handler) handleDeleteCorrection(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	deleted, err := DeleteCorrection(h.db, id)
+	deleted, err := DeleteCorrection(h.db, claimsFromCtx(r).UserID, id)
 	if err != nil {
 		log.Printf("Delete error: %v", err)
 		respondError(w, http.StatusInternalServerError, "删除失败")

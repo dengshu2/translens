@@ -72,21 +72,23 @@ func InitDB(dbPath string) (*sql.DB, error) {
 
 	CREATE TABLE IF NOT EXISTS translations (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 		chinese    TEXT NOT NULL,
 		english    TEXT NOT NULL,
 		created_at DATETIME DEFAULT (datetime('now'))
 	);
-	CREATE INDEX IF NOT EXISTS idx_translations_created_at
-		ON translations(created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_translations_user_created
+		ON translations(user_id, created_at DESC);
 
 	CREATE TABLE IF NOT EXISTS corrections (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 		original   TEXT NOT NULL,
 		corrected  TEXT NOT NULL,
 		created_at DATETIME DEFAULT (datetime('now'))
 	);
-	CREATE INDEX IF NOT EXISTS idx_corrections_created_at
-		ON corrections(created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_corrections_user_created
+		ON corrections(user_id, created_at DESC);
 	`
 	if _, err := db.Exec(schema); err != nil {
 		db.Close()
@@ -130,10 +132,10 @@ func getUserByEmail(db *sql.DB, email string) (User, string, error) {
 // ── Translation queries ───────────────────────────────────────────────────────
 
 // InsertTranslation stores a new translation and returns the complete record.
-func InsertTranslation(db *sql.DB, chinese, english string) (Translation, error) {
+func InsertTranslation(db *sql.DB, userID, chinese, english string) (Translation, error) {
 	result, err := db.Exec(
-		"INSERT INTO translations (chinese, english) VALUES (?, ?)",
-		chinese, english,
+		"INSERT INTO translations (user_id, chinese, english) VALUES (?, ?, ?)",
+		userID, chinese, english,
 	)
 	if err != nil {
 		return Translation{}, fmt.Errorf("insert translation: %w", err)
@@ -155,11 +157,12 @@ func InsertTranslation(db *sql.DB, chinese, english string) (Translation, error)
 	return t, nil
 }
 
-// GetAllTranslations returns every translation ordered by created_at DESC.
+// GetAllTranslations returns every translation for the given user ordered by created_at DESC.
 // Used for CSV export where all records are needed.
-func GetAllTranslations(db *sql.DB) ([]Translation, error) {
+func GetAllTranslations(db *sql.DB, userID string) ([]Translation, error) {
 	rows, err := db.Query(
-		"SELECT id, chinese, english, created_at FROM translations ORDER BY created_at DESC",
+		"SELECT id, chinese, english, created_at FROM translations WHERE user_id = ? ORDER BY created_at DESC",
+		userID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query translations: %w", err)
@@ -177,9 +180,9 @@ func GetAllTranslations(db *sql.DB) ([]Translation, error) {
 	return translations, rows.Err()
 }
 
-// GetTranslations returns a page of translations ordered by created_at DESC.
+// GetTranslations returns a page of translations for the given user ordered by created_at DESC.
 // If search is non-empty, it filters by Chinese or English text.
-func GetTranslations(db *sql.DB, limit, offset int, search string) ([]Translation, int, error) {
+func GetTranslations(db *sql.DB, userID string, limit, offset int, search string) ([]Translation, int, error) {
 	var (
 		total int
 		rows  *sql.Rows
@@ -189,24 +192,24 @@ func GetTranslations(db *sql.DB, limit, offset int, search string) ([]Translatio
 	if search != "" {
 		pattern := "%" + search + "%"
 		err = db.QueryRow(
-			"SELECT COUNT(*) FROM translations WHERE chinese LIKE ? OR english LIKE ?",
-			pattern, pattern,
+			"SELECT COUNT(*) FROM translations WHERE user_id = ? AND (chinese LIKE ? OR english LIKE ?)",
+			userID, pattern, pattern,
 		).Scan(&total)
 		if err != nil {
 			return nil, 0, fmt.Errorf("count translations: %w", err)
 		}
 		rows, err = db.Query(
-			"SELECT id, chinese, english, created_at FROM translations WHERE chinese LIKE ? OR english LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
-			pattern, pattern, limit, offset,
+			"SELECT id, chinese, english, created_at FROM translations WHERE user_id = ? AND (chinese LIKE ? OR english LIKE ?) ORDER BY created_at DESC LIMIT ? OFFSET ?",
+			userID, pattern, pattern, limit, offset,
 		)
 	} else {
-		err = db.QueryRow("SELECT COUNT(*) FROM translations").Scan(&total)
+		err = db.QueryRow("SELECT COUNT(*) FROM translations WHERE user_id = ?", userID).Scan(&total)
 		if err != nil {
 			return nil, 0, fmt.Errorf("count translations: %w", err)
 		}
 		rows, err = db.Query(
-			"SELECT id, chinese, english, created_at FROM translations ORDER BY created_at DESC LIMIT ? OFFSET ?",
-			limit, offset,
+			"SELECT id, chinese, english, created_at FROM translations WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+			userID, limit, offset,
 		)
 	}
 	if err != nil {
@@ -225,9 +228,10 @@ func GetTranslations(db *sql.DB, limit, offset int, search string) ([]Translatio
 	return translations, total, rows.Err()
 }
 
-// DeleteTranslation removes a translation by ID. Returns true if a row was deleted.
-func DeleteTranslation(db *sql.DB, id int64) (bool, error) {
-	result, err := db.Exec("DELETE FROM translations WHERE id = ?", id)
+// DeleteTranslation removes a translation by ID if it belongs to userID.
+// Returns true if a row was deleted. The user_id check prevents cross-user deletion.
+func DeleteTranslation(db *sql.DB, userID string, id int64) (bool, error) {
+	result, err := db.Exec("DELETE FROM translations WHERE id = ? AND user_id = ?", id, userID)
 	if err != nil {
 		return false, fmt.Errorf("delete translation: %w", err)
 	}
@@ -241,10 +245,10 @@ func DeleteTranslation(db *sql.DB, id int64) (bool, error) {
 // ── Corrections ──────────────────────────────────────────────────────────────
 
 // InsertCorrection stores a new correction record and returns the complete record.
-func InsertCorrection(db *sql.DB, original, corrected string) (Correction, error) {
+func InsertCorrection(db *sql.DB, userID, original, corrected string) (Correction, error) {
 	result, err := db.Exec(
-		"INSERT INTO corrections (original, corrected) VALUES (?, ?)",
-		original, corrected,
+		"INSERT INTO corrections (user_id, original, corrected) VALUES (?, ?, ?)",
+		userID, original, corrected,
 	)
 	if err != nil {
 		return Correction{}, fmt.Errorf("insert correction: %w", err)
@@ -266,9 +270,9 @@ func InsertCorrection(db *sql.DB, original, corrected string) (Correction, error
 	return c, nil
 }
 
-// GetCorrections returns a page of corrections ordered by created_at DESC.
+// GetCorrections returns a page of corrections for the given user ordered by created_at DESC.
 // If search is non-empty, it filters by original or corrected text.
-func GetCorrections(db *sql.DB, limit, offset int, search string) ([]Correction, int, error) {
+func GetCorrections(db *sql.DB, userID string, limit, offset int, search string) ([]Correction, int, error) {
 	var (
 		total int
 		rows  *sql.Rows
@@ -278,24 +282,24 @@ func GetCorrections(db *sql.DB, limit, offset int, search string) ([]Correction,
 	if search != "" {
 		pattern := "%" + search + "%"
 		err = db.QueryRow(
-			"SELECT COUNT(*) FROM corrections WHERE original LIKE ? OR corrected LIKE ?",
-			pattern, pattern,
+			"SELECT COUNT(*) FROM corrections WHERE user_id = ? AND (original LIKE ? OR corrected LIKE ?)",
+			userID, pattern, pattern,
 		).Scan(&total)
 		if err != nil {
 			return nil, 0, fmt.Errorf("count corrections: %w", err)
 		}
 		rows, err = db.Query(
-			"SELECT id, original, corrected, created_at FROM corrections WHERE original LIKE ? OR corrected LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
-			pattern, pattern, limit, offset,
+			"SELECT id, original, corrected, created_at FROM corrections WHERE user_id = ? AND (original LIKE ? OR corrected LIKE ?) ORDER BY created_at DESC LIMIT ? OFFSET ?",
+			userID, pattern, pattern, limit, offset,
 		)
 	} else {
-		err = db.QueryRow("SELECT COUNT(*) FROM corrections").Scan(&total)
+		err = db.QueryRow("SELECT COUNT(*) FROM corrections WHERE user_id = ?", userID).Scan(&total)
 		if err != nil {
 			return nil, 0, fmt.Errorf("count corrections: %w", err)
 		}
 		rows, err = db.Query(
-			"SELECT id, original, corrected, created_at FROM corrections ORDER BY created_at DESC LIMIT ? OFFSET ?",
-			limit, offset,
+			"SELECT id, original, corrected, created_at FROM corrections WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+			userID, limit, offset,
 		)
 	}
 	if err != nil {
@@ -314,11 +318,12 @@ func GetCorrections(db *sql.DB, limit, offset int, search string) ([]Correction,
 	return corrections, total, rows.Err()
 }
 
-// GetAllCorrections returns every correction ordered by created_at DESC.
+// GetAllCorrections returns every correction for the given user ordered by created_at DESC.
 // Used for CSV export.
-func GetAllCorrections(db *sql.DB) ([]Correction, error) {
+func GetAllCorrections(db *sql.DB, userID string) ([]Correction, error) {
 	rows, err := db.Query(
-		"SELECT id, original, corrected, created_at FROM corrections ORDER BY created_at DESC",
+		"SELECT id, original, corrected, created_at FROM corrections WHERE user_id = ? ORDER BY created_at DESC",
+		userID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query corrections: %w", err)
@@ -336,9 +341,10 @@ func GetAllCorrections(db *sql.DB) ([]Correction, error) {
 	return corrections, rows.Err()
 }
 
-// DeleteCorrection removes a correction by ID. Returns true if a row was deleted.
-func DeleteCorrection(db *sql.DB, id int64) (bool, error) {
-	result, err := db.Exec("DELETE FROM corrections WHERE id = ?", id)
+// DeleteCorrection removes a correction by ID if it belongs to userID.
+// Returns true if a row was deleted. The user_id check prevents cross-user deletion.
+func DeleteCorrection(db *sql.DB, userID string, id int64) (bool, error) {
+	result, err := db.Exec("DELETE FROM corrections WHERE id = ? AND user_id = ?", id, userID)
 	if err != nil {
 		return false, fmt.Errorf("delete correction: %w", err)
 	}
