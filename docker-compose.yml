@@ -12,6 +12,7 @@ services:
       - ENABLE_REGISTRATION=${ENABLE_REGISTRATION:-true}
       - PORT=8080
       - DB_PATH=/app/data/translations.db
+      - UMAMI_WEBSITE_ID=${UMAMI_WEBSITE_ID}
     volumes:
       - ./data:/app/data
     networks:
