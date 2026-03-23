@@ -968,6 +968,23 @@ textarea:focus-visible {
     font-size: 15px;
 }
 
+.mode-tabs-hint {
+    display: none;
+    align-items: center;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-light);
+    padding: 0 var(--space-sm);
+    white-space: nowrap;
+    opacity: 0.6;
+    letter-spacing: 0.02em;
+}
+
+@media (min-width: 769px) {
+    .mode-tabs-hint {
+        display: flex;
+    }
+}
+
 /* ── Corrected Result Card ───────────────────────── */
 .correct-result-card {
     padding-bottom: calc(var(--space-lg) + var(--space-md));

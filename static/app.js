@@ -145,6 +145,14 @@ function switchMode(mode) {
 tabTranslate.addEventListener('click', () => switchMode('translate'));
 tabCorrect.addEventListener('click', () => switchMode('correct'));
 
+// Global shortcut: Ctrl + / to toggle between modes
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        switchMode(currentMode === 'translate' ? 'correct' : 'translate');
+    }
+});
+
 // ════════════════════════════════════════════════════
 // Utilities
 // ════════════════════════════════════════════════════
