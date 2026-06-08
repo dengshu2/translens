@@ -16,8 +16,8 @@ services:
     volumes:
       - ./data:/app/data
     networks:
-      - npm-network
+      - proxy-network
 
 networks:
-  npm-network:
+  proxy-network:
     external: true
