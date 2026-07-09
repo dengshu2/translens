@@ -169,6 +169,38 @@ func TestHandleTranslate_InvalidJSON(t *testing.T) {
 	}
 }
 
+func TestHandleTranslate_InvalidInput(t *testing.T) {
+	h := newTestHandler(t, &mockTranslator{err: ErrInvalidInput})
+
+	body := strings.NewReader(`{"chinese":"hello world"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/translate", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = withUser(req, testUserID)
+	rec := httptest.NewRecorder()
+
+	h.handleTranslate(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for model-rejected input, got %d", rec.Code)
+	}
+}
+
+func TestHandleTranslate_OversizedBody(t *testing.T) {
+	h := newTestHandler(t, &mockTranslator{result: "Hello"})
+
+	body := strings.NewReader(`{"chinese":"` + strings.Repeat("a", maxRequestBody+1) + `"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/translate", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = withUser(req, testUserID)
+	rec := httptest.NewRecorder()
+
+	h.handleTranslate(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for oversized body, got %d", rec.Code)
+	}
+}
+
 func TestHandleTranslate_TranslatorError(t *testing.T) {
 	h := newTestHandler(t, &mockTranslator{
 		err: io.ErrUnexpectedEOF, // simulate API failure
@@ -333,6 +365,24 @@ func TestHandleExportCSV_WithData(t *testing.T) {
 	// Account for BOM in first line.
 	if len(lines) != 2 {
 		t.Errorf("expected 2 CSV lines (header + 1 row), got %d", len(lines))
+	}
+}
+
+func TestCSVCell_FormulaInjection(t *testing.T) {
+	cases := map[string]string{
+		"=1+1":      "'=1+1",
+		"+SUM(A1)":  "'+SUM(A1)",
+		"-2":        "'-2",
+		"@cmd":      "'@cmd",
+		"hello":     "hello",
+		"你好":        "你好",
+		"":          "",
+		"a=formula": "a=formula",
+	}
+	for in, want := range cases {
+		if got := csvCell(in); got != want {
+			t.Errorf("csvCell(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 

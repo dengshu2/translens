@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/mail"
 	"strings"
 	"time"
 
@@ -21,12 +22,17 @@ const (
 // Sentinel errors for user-facing auth failures.
 var (
 	ErrEmailRequired    = errors.New("email is required")
+	ErrEmailInvalid     = errors.New("invalid email address")
 	ErrPasswordTooShort = errors.New("password must be at least 8 characters")
 	ErrPasswordTooLong  = errors.New("password is too long (maximum 128 characters)")
 	ErrEmailTaken       = errors.New("email already registered")
 	ErrInvalidCreds     = errors.New("invalid email or password")
 	ErrRegistrationOff  = errors.New("registration is disabled")
 )
+
+// dummyHash keeps login timing uniform when the email doesn't exist,
+// so response time doesn't reveal which addresses are registered.
+var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("translens-timing-pad"), bcryptCost)
 
 type contextKey string
 
@@ -53,6 +59,9 @@ func (a *AuthService) Register(email, password string) (User, string, error) {
 	if email == "" {
 		return User{}, "", ErrEmailRequired
 	}
+	if addr, err := mail.ParseAddress(email); err != nil || addr.Address != email {
+		return User{}, "", ErrEmailInvalid
+	}
 	if len(password) < 8 {
 		return User{}, "", ErrPasswordTooShort
 	}
@@ -60,22 +69,18 @@ func (a *AuthService) Register(email, password string) (User, string, error) {
 		return User{}, "", ErrPasswordTooLong
 	}
 
-	// Check for duplicate email.
-	existing, _, err := getUserByEmail(a.db, email)
-	if err != nil {
-		return User{}, "", fmt.Errorf("check email: %w", err)
-	}
-	if existing.ID != "" {
-		return User{}, "", ErrEmailTaken
-	}
-
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
 	if err != nil {
 		return User{}, "", fmt.Errorf("hash password: %w", err)
 	}
 
+	// Insert directly and rely on the UNIQUE constraint for duplicates —
+	// a prior SELECT check would race with concurrent registrations.
 	user, err := createUser(a.db, email, string(hash))
 	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return User{}, "", ErrEmailTaken
+		}
 		return User{}, "", fmt.Errorf("create user: %w", err)
 	}
 
@@ -96,6 +101,8 @@ func (a *AuthService) Login(email, password string) (User, string, error) {
 		return User{}, "", fmt.Errorf("lookup user: %w", err)
 	}
 	if user.ID == "" {
+		// Burn a bcrypt comparison so unknown emails take as long as wrong passwords.
+		bcrypt.CompareHashAndPassword(dummyHash, []byte(password))
 		return User{}, "", ErrInvalidCreds
 	}
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
 	"github.com/joho/godotenv"
 )
 
@@ -50,6 +51,11 @@ func main() {
 		enableReg = strings.EqualFold(v, "true") || v == "1"
 	}
 
+	allowedOrigin := os.Getenv("ALLOWED_ORIGIN")
+	if allowedOrigin == "" {
+		allowedOrigin = "https://translate.dengshu.ovh"
+	}
+
 	// ── Database ─────────────────────────────────────────────────────
 	db, err := InitDB(dbPath)
 	if err != nil {
@@ -84,8 +90,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
-	r.Use(middleware.Throttle(10)) // Limit to 10 concurrent requests.
-	r.Use(corsMiddleware)
+	r.Use(corsMiddleware(allowedOrigin))
 
 	// Health check (unauthenticated, for Docker/load balancer probes).
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -98,9 +103,12 @@ func main() {
 		w.Write([]byte("ok"))
 	})
 
-	// Public auth routes.
-	r.Post("/auth/register", h.handleRegister)
-	r.Post("/auth/login", h.handleLogin)
+	// Public auth routes, rate-limited by IP against credential brute-forcing.
+	r.Group(func(r chi.Router) {
+		r.Use(httprate.LimitByIP(10, time.Minute))
+		r.Post("/auth/register", h.handleRegister)
+		r.Post("/auth/login", h.handleLogin)
+	})
 	r.Get("/api/config", h.handleConfig)
 
 	// Login page.
@@ -108,8 +116,10 @@ func main() {
 		http.ServeFile(w, r, "static/login.html")
 	})
 
-	// Authenticated API routes.
+	// Authenticated API routes. The concurrency throttle lives here (not
+	// globally) so slow LLM calls can't starve static files and the login page.
 	r.Group(func(r chi.Router) {
+		r.Use(middleware.Throttle(10))
 		r.Use(jwtMiddleware(auth))
 
 		// Translation.

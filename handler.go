@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,6 +16,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 )
+
+// maxRequestBody caps JSON request bodies well above any valid input
+// (500/1000 runes) so oversized payloads fail before being decoded.
+const maxRequestBody = 64 << 10
 
 // Translator abstracts the translation capability so it can be mocked in tests.
 type Translator interface {
@@ -47,11 +52,25 @@ func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
 }
 
+// csvCell neutralizes spreadsheet formula injection: Excel executes cells
+// starting with = + - @ when the exported CSV is opened.
+func csvCell(s string) string {
+	if s == "" {
+		return s
+	}
+	switch s[0] {
+	case '=', '+', '-', '@', '\t', '\r':
+		return "'" + s
+	}
+	return s
+}
+
 // handleTranslate handles POST /api/translate
 func (h *handler) handleTranslate(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Chinese string `json:"chinese"`
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "无效的请求格式")
 		return
@@ -71,6 +90,10 @@ func (h *handler) handleTranslate(w http.ResponseWriter, r *http.Request) {
 	// Call OpenRouter to translate.
 	english, err := h.translator.Translate(r.Context(), req.Chinese)
 	if err != nil {
+		if errors.Is(err, ErrInvalidInput) {
+			respondError(w, http.StatusBadRequest, "输入未被识别为中文，请检查后重试")
+			return
+		}
 		log.Printf("Translation error: %v", err)
 		respondError(w, http.StatusInternalServerError, "翻译失败，请稍后重试")
 		return
@@ -151,8 +174,8 @@ func (h *handler) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 	for _, t := range translations {
 		writer.Write([]string{
 			fmt.Sprintf("%d", t.ID),
-			t.Chinese,
-			t.English,
+			csvCell(t.Chinese),
+			csvCell(t.English),
 			t.CreatedAt.Format(time.RFC3339),
 		})
 	}
@@ -186,6 +209,7 @@ func (h *handler) handleCorrect(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		English string `json:"english"`
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "无效的请求格式")
 		return
@@ -203,6 +227,10 @@ func (h *handler) handleCorrect(w http.ResponseWriter, r *http.Request) {
 
 	corrected, err := h.corrector.CorrectEnglish(r.Context(), req.English)
 	if err != nil {
+		if errors.Is(err, ErrInvalidInput) {
+			respondError(w, http.StatusBadRequest, "输入未被识别为英文，请检查后重试")
+			return
+		}
 		log.Printf("Correction error: %v", err)
 		respondError(w, http.StatusInternalServerError, "纠错失败，请稍后重试")
 		return
@@ -278,8 +306,8 @@ func (h *handler) handleExportCorrectionsCSV(w http.ResponseWriter, r *http.Requ
 	for _, c := range corrections {
 		writer.Write([]string{
 			fmt.Sprintf("%d", c.ID),
-			c.Original,
-			c.Corrected,
+			csvCell(c.Original),
+			csvCell(c.Corrected),
 			c.CreatedAt.Format(time.RFC3339),
 		})
 	}

@@ -132,10 +132,13 @@ func getUserByEmail(db *sql.DB, email string) (User, string, error) {
 // ── Translation queries ───────────────────────────────────────────────────────
 
 // InsertTranslation stores a new translation and returns the complete record.
+// created_at is written explicitly (UTC, like users) instead of relying on the
+// column default, so all tables share one timestamp source.
 func InsertTranslation(db *sql.DB, userID, chinese, english string) (Translation, error) {
+	now := time.Now().UTC()
 	result, err := db.Exec(
-		"INSERT INTO translations (user_id, chinese, english) VALUES (?, ?, ?)",
-		userID, chinese, english,
+		"INSERT INTO translations (user_id, chinese, english, created_at) VALUES (?, ?, ?, ?)",
+		userID, chinese, english, now,
 	)
 	if err != nil {
 		return Translation{}, fmt.Errorf("insert translation: %w", err)
@@ -146,15 +149,7 @@ func InsertTranslation(db *sql.DB, userID, chinese, english string) (Translation
 		return Translation{}, fmt.Errorf("get last insert id: %w", err)
 	}
 
-	var t Translation
-	err = db.QueryRow(
-		"SELECT id, chinese, english, created_at FROM translations WHERE id = ?", id,
-	).Scan(&t.ID, &t.Chinese, &t.English, &t.CreatedAt)
-	if err != nil {
-		return Translation{}, fmt.Errorf("read back translation: %w", err)
-	}
-
-	return t, nil
+	return Translation{ID: id, Chinese: chinese, English: english, CreatedAt: now}, nil
 }
 
 // GetAllTranslations returns every translation for the given user ordered by created_at DESC.
@@ -245,10 +240,12 @@ func DeleteTranslation(db *sql.DB, userID string, id int64) (bool, error) {
 // ── Corrections ──────────────────────────────────────────────────────────────
 
 // InsertCorrection stores a new correction record and returns the complete record.
+// created_at is written explicitly (UTC) — see InsertTranslation.
 func InsertCorrection(db *sql.DB, userID, original, corrected string) (Correction, error) {
+	now := time.Now().UTC()
 	result, err := db.Exec(
-		"INSERT INTO corrections (user_id, original, corrected) VALUES (?, ?, ?)",
-		userID, original, corrected,
+		"INSERT INTO corrections (user_id, original, corrected, created_at) VALUES (?, ?, ?, ?)",
+		userID, original, corrected, now,
 	)
 	if err != nil {
 		return Correction{}, fmt.Errorf("insert correction: %w", err)
@@ -259,15 +256,7 @@ func InsertCorrection(db *sql.DB, userID, original, corrected string) (Correctio
 		return Correction{}, fmt.Errorf("get last insert id: %w", err)
 	}
 
-	var c Correction
-	err = db.QueryRow(
-		"SELECT id, original, corrected, created_at FROM corrections WHERE id = ?", id,
-	).Scan(&c.ID, &c.Original, &c.Corrected, &c.CreatedAt)
-	if err != nil {
-		return Correction{}, fmt.Errorf("read back correction: %w", err)
-	}
-
-	return c, nil
+	return Correction{ID: id, Original: original, Corrected: corrected, CreatedAt: now}, nil
 }
 
 // GetCorrections returns a page of corrections for the given user ordered by created_at DESC.

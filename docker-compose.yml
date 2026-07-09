@@ -10,6 +10,7 @@ services:
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-google/gemini-2.5-flash-preview}
       - JWT_SECRET=${JWT_SECRET}
       - ENABLE_REGISTRATION=${ENABLE_REGISTRATION:-true}
+      - ALLOWED_ORIGIN=${ALLOWED_ORIGIN:-https://translate.dengshu.ovh}
       - PORT=8080
       - DB_PATH=/app/data/translations.db
       - UMAMI_WEBSITE_ID=${UMAMI_WEBSITE_ID}

@@ -18,6 +18,7 @@ func (h *handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -27,6 +28,7 @@ func (h *handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrEmailRequired),
+			errors.Is(err, ErrEmailInvalid),
 			errors.Is(err, ErrPasswordTooShort),
 			errors.Is(err, ErrPasswordTooLong),
 			errors.Is(err, ErrEmailTaken):
@@ -50,6 +52,7 @@ func (h *handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
